@@ -54,6 +54,7 @@
         self.fileLabel.selectable = NO;
         self.fileLabel.lineBreakMode = NSLineBreakByCharWrapping;
         self.fileLabel.drawsBackground = YES;
+        [self normalFileTitleTextColor];
         
         [self addSubview:self.fileLabel];
     }

@@ -31,6 +31,7 @@ int main(int argc, const char * argv[]) {
     
     NSArray *t1;
     NSApplication *application = [NSApplication sharedApplication];
+    application.appearance = [NSAppearance appearanceNamed:NSAppearanceNameAqua];
     [[NSBundle mainBundle] loadNibNamed:@"MainMenu"
                                   owner:application
                         topLevelObjects:&t1];

@@ -246,7 +246,8 @@
                                           size:11.0];
     
     NSDictionary *fontAttributes = @{NSFontAttributeName: chicagoFont,
-                                     NSParagraphStyleAttributeName: titleStyle};
+                                     NSParagraphStyleAttributeName: titleStyle,
+                                     NSForegroundColorAttributeName: [[CCIApplicationStyles instance] blackColor]};
     
     NSSize titleTextSize = [self.titleText sizeWithAttributes:fontAttributes];
     CGFloat textWidth = titleTextSize.width + 12.0;
