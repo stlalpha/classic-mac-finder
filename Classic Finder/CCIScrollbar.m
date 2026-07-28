@@ -31,6 +31,7 @@
 @property (nonatomic) NSSize sizeOfScrollView;
 @property (nonatomic) CGFloat maxContentSize;
 @property (nonatomic) NSPoint scrollerPosition;
+@property (nonatomic) CGFloat currentScrollFraction;
 
 @property ScrollDirection direction;
 
@@ -78,6 +79,7 @@
     [scrollbar setScrollerPosition:scrollerPosition];
     [scrollbar setDisabled:NO];
     [scrollbar setWhiteOut:NO];
+    [scrollbar setScrollFraction:0.0];
     
     return scrollbar;
 }
@@ -117,6 +119,7 @@
     [scrollbar setScrollerPosition:scrollerPosition];
     [scrollbar setDisabled:NO];
     [scrollbar setWhiteOut:NO];
+    [scrollbar setScrollFraction:0.0];
 
     return scrollbar;
 }
@@ -142,20 +145,32 @@
         
         [[self downOrRightArrow] setFrame:newDownButtonFrame];
     }
+
+    [self setScrollFraction:self.currentScrollFraction];
 }
 
 #pragma mark - UPDATE SCROLLBAR PROPERTY METHODS
-- (void)setScrollerYPosition:(CGFloat)yPOS
+- (void)setScrollFraction:(CGFloat)scrollFraction
 {
-    NSPoint newPoint = NSMakePoint(self.scrollerPosition.x, yPOS);
-    self.scrollerPosition = newPoint;
+    CGFloat clampedFraction = MIN(MAX(scrollFraction, 0.0), 1.0);
+    self.currentScrollFraction = clampedFraction;
     
-    [[self scroller] moveScrollerBoxToPoint:newPoint];
-}
+    NSPoint newPoint = self.scrollerPosition;
 
-- (void)setScrollerXPosition:(CGFloat)xPOS
-{
-    NSPoint newPoint = NSMakePoint(xPOS, self.scrollerPosition.y);
+    if (self.direction == Vertical) {
+        CGFloat minimumPosition = NSMaxY(self.leftOrUpArrow.frame);
+        CGFloat maximumPosition = NSMinY(self.downOrRightArrow.frame) - NSHeight(self.scroller.frame);
+        CGFloat availableTravel = MAX(maximumPosition - minimumPosition, 0.0);
+
+        newPoint.y = round(minimumPosition + (clampedFraction * availableTravel));
+    } else {
+        CGFloat minimumPosition = NSMaxX(self.leftOrUpArrow.frame);
+        CGFloat maximumPosition = NSMinX(self.downOrRightArrow.frame) - NSWidth(self.scroller.frame);
+        CGFloat availableTravel = MAX(maximumPosition - minimumPosition, 0.0);
+
+        newPoint.x = round(minimumPosition + (clampedFraction * availableTravel));
+    }
+
     self.scrollerPosition = newPoint;
     
     [[self scroller] moveScrollerBoxToPoint:newPoint];

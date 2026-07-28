@@ -22,6 +22,8 @@
 // along with Classic Finder.  If not, see <http://www.gnu.org/licenses/>.
 
 #import <XCTest/XCTest.h>
+#import "CCIScrollView.h"
+#import "CCIScrollbar.h"
 
 @interface Classic_FinderTests : XCTestCase
 
@@ -39,16 +41,62 @@
     [super tearDown];
 }
 
-- (void)testExample {
-    // This is an example of a functional test case.
-    // Use XCTAssert and related functions to verify your tests produce the correct results.
+- (void)testVerticalScrollBoxUsesCompleteAvailableTravel {
+    CCIScrollView *scrollView = [[CCIScrollView alloc] initWithFrame:NSMakeRect(0.0, 0.0, 500.0, 255.0)
+                                                       andController:nil];
+    CCIScrollbar *scrollbar = [scrollView valueForKey:@"verticalScrollbar"];
+    NSView *scrollBox = [scrollbar valueForKey:@"scroller"];
+    NSView *topArrow = [scrollbar valueForKey:@"leftOrUpArrow"];
+    NSView *bottomArrow = [scrollbar valueForKey:@"downOrRightArrow"];
+
+    [scrollbar setScrollFraction:0.0];
+    XCTAssertEqualWithAccuracy(NSMinY(scrollBox.frame), NSMaxY(topArrow.frame), 0.001);
+
+    [scrollbar setScrollFraction:1.0];
+    XCTAssertEqualWithAccuracy(NSMaxY(scrollBox.frame), NSMinY(bottomArrow.frame), 0.001);
 }
 
-- (void)testPerformanceExample {
-    // This is an example of a performance test case.
-    [self measureBlock:^{
-        // Put the code you want to measure the time of here.
-    }];
+- (void)testContentAndVerticalScrollBoxReachTheirEndpointsTogether {
+    CCIScrollView *scrollView = [[CCIScrollView alloc] initWithFrame:NSMakeRect(0.0, 0.0, 500.0, 255.0)
+                                                       andController:nil];
+    [scrollView resizeContentView:NSMakeRect(0.0, 0.0, 500.0, 330.0)];
+
+    CCIScrollbar *scrollbar = [scrollView valueForKey:@"verticalScrollbar"];
+    NSView *scrollBox = [scrollbar valueForKey:@"scroller"];
+    NSView *bottomArrow = [scrollbar valueForKey:@"downOrRightArrow"];
+    id downArrow = [scrollbar valueForKey:@"downOrRightArrow"];
+    id upArrow = [scrollbar valueForKey:@"leftOrUpArrow"];
+
+    [scrollView performScrollAction:downArrow];
+    [scrollView performScrollAction:downArrow];
+    NSPoint bottomPosition = [[scrollView valueForKey:@"currentScrollPosition"] pointValue];
+
+    XCTAssertEqualWithAccuracy(NSMaxY(scrollBox.frame), NSMinY(bottomArrow.frame), 0.001);
+
+    [scrollView performScrollAction:downArrow];
+    NSPoint positionAfterExtraDownClick = [[scrollView valueForKey:@"currentScrollPosition"] pointValue];
+    XCTAssertEqualWithAccuracy(positionAfterExtraDownClick.y, bottomPosition.y, 0.001);
+
+    [scrollView performScrollAction:upArrow];
+    [scrollView performScrollAction:upArrow];
+    NSPoint topPosition = [[scrollView valueForKey:@"currentScrollPosition"] pointValue];
+
+    XCTAssertEqualWithAccuracy(topPosition.y, 0.0, 0.001);
+}
+
+- (void)testHorizontalScrollBoxUsesCompleteAvailableTravel {
+    CCIScrollView *scrollView = [[CCIScrollView alloc] initWithFrame:NSMakeRect(0.0, 0.0, 500.0, 255.0)
+                                                       andController:nil];
+    CCIScrollbar *scrollbar = [scrollView valueForKey:@"horizontalScrollbar"];
+    NSView *scrollBox = [scrollbar valueForKey:@"scroller"];
+    NSView *leftArrow = [scrollbar valueForKey:@"leftOrUpArrow"];
+    NSView *rightArrow = [scrollbar valueForKey:@"downOrRightArrow"];
+
+    [scrollbar setScrollFraction:0.0];
+    XCTAssertEqualWithAccuracy(NSMinX(scrollBox.frame), NSMaxX(leftArrow.frame), 0.001);
+
+    [scrollbar setScrollFraction:1.0];
+    XCTAssertEqualWithAccuracy(NSMaxX(scrollBox.frame), NSMinX(rightArrow.frame), 0.001);
 }
 
 @end

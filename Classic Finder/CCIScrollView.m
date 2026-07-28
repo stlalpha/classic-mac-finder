@@ -34,13 +34,14 @@
 }
 
 @property (nonatomic) NSSize scrollableDistance;
-@property (nonatomic) NSSize scrollIntervalSize;
 @property (nonatomic) NSPoint currentScrollPosition;
-@property (nonatomic) NSPoint currentScrollerBarPosition;
 
 @property (nonatomic, strong) CCIScrollbar *horizontalScrollbar;
 @property (nonatomic, strong) CCIScrollbar *verticalScrollbar;
 @property (nonatomic, strong) CCIWindowGripButton *gripButton;
+
+- (void)updateScrollingMetrics;
+- (void)setScrollPosition:(NSPoint)scrollPosition;
 
 @end
 
@@ -69,35 +70,14 @@
         [self addSubview:self.contentViewContainer];
         
         // // Create content view
-        NSRect contentViewFrame = NSMakeRect(0.0, 1.0, frameRect.size.width, (frameRect.size.height - 1.0));
+        NSRect contentViewFrame = NSMakeRect(0.0, 0.0, frameRect.size.width, (frameRect.size.height - 1.0));
         CCIScrollContentView *contentView = [[CCIScrollContentView alloc] initWithFrame:contentViewFrame];
         [self setContentView:contentView];
         //[self addSubview:self.contentView];
         [[self contentViewContainer] addSubview:contentView];
         
-        // // Calculate scroll travel distances
-        CGFloat scrollableDistanceW = (contentViewFrame.size.width > frameRect.size.width) ? (contentViewFrame.size.width - frameRect.size.width + 16.0) : 0.0;
-        CGFloat scrollableDistanceH = (contentViewFrame.size.height > frameRect.size.height) ? (contentViewFrame.size.height - frameRect.size.height + 16.0) : 0.0;
-        
-        NSSize scrollableDistance = NSMakeSize(scrollableDistanceW, scrollableDistanceH);
-        [self setScrollableDistance:scrollableDistance];
-        
-        //
         NSPoint currentScrollPosition = NSMakePoint(0.0, 0.0);
         [self setCurrentScrollPosition:currentScrollPosition];
-        
-        //
-        CGFloat leftButtonWidth = 16.0;
-        CGFloat rightButtonWidth = 16.0;
-        CGFloat scrollerMidWidth = (16.0/2.0);
-        CGFloat combinedNegativeWidth = leftButtonWidth + rightButtonWidth + scrollerMidWidth;
-        
-        CGFloat horizontalScrollInterval = (contentViewFrame.size.width > frameRect.size.width) ? (round(contentViewFrame.size.width - combinedNegativeWidth)) : 0.0;
-        
-        CGFloat verticalScrollInterval = (contentViewFrame.size.height > frameRect.size.height) ? (contentViewFrame.size.height - frameRect.size.height) : 0.0;
-        
-        NSSize scrollIntervalSize = NSMakeSize(horizontalScrollInterval, verticalScrollInterval);
-        [self setScrollIntervalSize:scrollIntervalSize];
         
         // // Create scrollbar controls
         CCIScrollbar *verticalScrollbar = [CCIScrollbar verticalScrollbarForScrollView:self
@@ -118,9 +98,7 @@
         
         [self addSubview:gripButton];
         
-        // // Init scroller positions
-        NSPoint scrollerInitialPoints = NSMakePoint(0.0, 0.0);
-        [self setCurrentScrollerBarPosition:scrollerInitialPoints];
+        [self updateScrollingMetrics];
     }
     
     return self;
@@ -160,29 +138,7 @@
     
     [[self contentView] setFrame:contentViewFrame];
 
-    
-    // // Calculate scroll travel distances
-    CGFloat scrollableDistanceW = (contentViewFrame.size.width > frame.size.width) ? (contentViewFrame.size.width - frame.size.width + 16.0) : 0.0;
-    CGFloat scrollableDistanceH = (contentViewFrame.size.height > frame.size.height) ? (contentViewFrame.size.height - frame.size.height + 16.0) : 0.0;
-    
-    NSSize scrollableDistance = NSMakeSize(scrollableDistanceW, scrollableDistanceH);
-    [self setScrollableDistance:scrollableDistance];
-    
-    //
-    CGFloat leftButtonWidth = 16.0;
-    CGFloat rightButtonWidth = 16.0;
-    CGFloat scrollerMidWidth = (16.0/2.0);
-    CGFloat combinedNegativeWidth = leftButtonWidth + rightButtonWidth + scrollerMidWidth;
-    
-    CGFloat horizontalScrollInterval = (contentViewFrame.size.width > frame.size.width) ? (round(contentViewFrame.size.width - combinedNegativeWidth)) : 0.0;
-    
-    CGFloat verticalScrollInterval = (contentViewFrame.size.height > frame.size.height) ? (contentViewFrame.size.height - frame.size.height) : 0.0;
-    
-    NSSize scrollIntervalSize = NSMakeSize(horizontalScrollInterval, verticalScrollInterval);
-    [self setScrollIntervalSize:scrollIntervalSize];
-    
-    // // Create scrollbar controls
-    
+    // Update scrollbar controls
     NSRect verticalScrollbarFrame = NSMakeRect(frame.size.width - 15.0,
                                                1.0,
                                                15.0,
@@ -201,6 +157,8 @@
                                         15.0,
                                         15.0);
     [[self gripButton] setFrame:gripButtonFrame];
+
+    [self updateScrollingMetrics];
 }
 
 #pragma mark - NON-COMPUTED PROPERTIES
@@ -220,128 +178,83 @@
 {
     CCIScrollbarArrowButton *clickedBtn = (CCIScrollbarArrowButton *)sender;
     ButtonDirectionality direction = clickedBtn.direction;
+    NSPoint newScrollPosition = self.currentScrollPosition;
     
     if (direction == Up) {
-        CGFloat newYPosition = self.currentScrollPosition.y + 50.0;
-        newYPosition = (newYPosition < 0) ? newYPosition : 0.0;
-
-        NSRect newFrame = NSMakeRect(self.currentScrollPosition.x, newYPosition, self.contentView.frame.size.width, self.contentView.frame.size.height);
-        [self.contentView setFrame:newFrame];
-        
-        self.currentScrollPosition = NSMakePoint(self.currentScrollPosition.x, newYPosition);
-        
-        // Set scroller position
-        
-        CGFloat scrollbarTrackHeight = self.verticalScrollbar.frame.size.height - 16.0 - 16.0;
-        
-        // current scroll position * height of scrollbar track / max height of scrollable distance
-        CGFloat step1 = (0.0 - self.currentScrollPosition.y) * scrollbarTrackHeight;
-        CGFloat YPositionOfScroller = step1 / self.scrollableDistance.height;
-        YPositionOfScroller = (YPositionOfScroller < 16.0) ? 16.0 : YPositionOfScroller + 16.0;
-        
-        self.currentScrollerBarPosition = NSMakePoint(self.currentScrollerBarPosition.x, YPositionOfScroller);
-        
-        [self.verticalScrollbar setScrollerYPosition:YPositionOfScroller];
-        
+        newScrollPosition.y += 50.0;
     } else if (direction == Down) {
-        CGFloat newYPosition = self.currentScrollPosition.y - 50.0;
-        newYPosition = (newYPosition > (0.0 - self.scrollableDistance.height)) ? newYPosition : 0.0 - self.scrollableDistance.height;
-        
-        NSRect newFrame = NSMakeRect(self.currentScrollPosition.x, newYPosition, self.contentView.frame.size.width, self.contentView.frame.size.height);
-        [self.contentView setFrame:newFrame];
-        
-        self.currentScrollPosition = NSMakePoint(self.currentScrollPosition.x, newYPosition);
-        
-        // Set scroller position
-        
-        CGFloat scrollbarTrackHeight = self.verticalScrollbar.frame.size.height - 16.0 - 16.0;
-        
-        // current scroll position * height of scrollbar track / max height of scrollable distance
-        CGFloat step1 = (0.0 - self.currentScrollPosition.y) * scrollbarTrackHeight;
-        CGFloat YPositionOfScroller = step1 / self.scrollableDistance.height;
-        YPositionOfScroller = (YPositionOfScroller >= scrollbarTrackHeight - 16.0) ? (scrollbarTrackHeight - 16.0) + 16.0 : YPositionOfScroller + 16.0;
-        
-        self.currentScrollerBarPosition = NSMakePoint(self.currentScrollerBarPosition.x, YPositionOfScroller);
-        
-        [self.verticalScrollbar setScrollerYPosition:YPositionOfScroller];
+        newScrollPosition.y -= 50.0;
     } else if (direction == Left) {
-        CGFloat newXPosition = self.currentScrollPosition.x + 50.0;
-        newXPosition = (newXPosition < 0) ? newXPosition : 0.0;
-        
-        NSRect newFrame = NSMakeRect(newXPosition, self.currentScrollPosition.y, self.contentView.frame.size.width, self.contentView.frame.size.height);
-        [self.contentView setFrame:newFrame];
-        
-        self.currentScrollPosition = NSMakePoint(newXPosition, self.currentScrollPosition.y);
-        
-        // Set scroller position
-        
-        CGFloat scrollbarTrackWidth = self.horizontalScrollbar.frame.size.width - 16.0 - 16.0;
-        
-        // current scroll position * height of scrollbar track / max height of scrollable distance
-        CGFloat step1 = (0 - self.currentScrollPosition.x) * scrollbarTrackWidth;
-        CGFloat XPositionOfScroller = step1 / self.scrollableDistance.width;
-        XPositionOfScroller = (XPositionOfScroller < 16.0) ? 16.0 : XPositionOfScroller + 16.0;
-        
-        self.currentScrollerBarPosition = NSMakePoint(XPositionOfScroller, self.currentScrollerBarPosition.y);
-        
-        [self.horizontalScrollbar setScrollerXPosition:XPositionOfScroller];
+        newScrollPosition.x += 50.0;
     } else if (direction == Right) {
-        CGFloat newXPosition = self.currentScrollPosition.x - 50.0;
-        newXPosition = (newXPosition > (0 - self.scrollableDistance.width)) ? newXPosition : (0.0 - self.scrollableDistance.width);
-        
-        NSRect newFrame = NSMakeRect(newXPosition, self.currentScrollPosition.y, self.contentView.frame.size.width, self.contentView.frame.size.height);
-        [self.contentView setFrame:newFrame];
-        
-        self.currentScrollPosition = NSMakePoint(newXPosition, self.currentScrollPosition.y);
-        
-        
-        // Set scroller position
-        
-        CGFloat scrollbarTrackWidth = self.horizontalScrollbar.frame.size.width - 16.0 - 16.0;
-        
-        // current scroll position * height of scrollbar track / max height of scrollable distance
-        CGFloat step1 = (0.0 - self.currentScrollPosition.x) * scrollbarTrackWidth;
-        CGFloat XPositionOfScroller = step1 / self.scrollableDistance.width;
-        XPositionOfScroller = (XPositionOfScroller >= (scrollbarTrackWidth - 16.0)) ? ((scrollbarTrackWidth - 16.0) + 16.0) : (XPositionOfScroller + 16.0);
-        
-        self.currentScrollerBarPosition = NSMakePoint(XPositionOfScroller, self.currentScrollerBarPosition.y);
-        
-        [self.horizontalScrollbar setScrollerXPosition:XPositionOfScroller];
+        newScrollPosition.x -= 50.0;
     }
+
+    [self setScrollPosition:newScrollPosition];
 }
 
 - (void)resizeContentView:(NSRect)newFrame
 {
-    [[self contentView] setFrame:newFrame];
-    
-    CGFloat scrollableDistanceW = (newFrame.size.width > self.frame.size.width) ? (newFrame.size.width - self.frame.size.width + 14.0) : 0.0;
-    CGFloat scrollableDistanceH = (newFrame.size.height > self.frame.size.height) ? (newFrame.size.height - self.frame.size.height + 14.0) : 0.0;
-    
-    NSSize scrollableDistance = NSMakeSize(scrollableDistanceW, scrollableDistanceH);
-    [self setScrollableDistance:scrollableDistance];
+    [self.contentView setFrameSize:newFrame.size];
     
     [[self verticalScrollbar] updateMaxContentSize:newFrame.size.height];
     [[self horizontalScrollbar] updateMaxContentSize:newFrame.size.width];
 
-    if (self.contentView.frame.size.width <= self.frame.size.width) {
+    [self updateScrollingMetrics];
+}
+
+- (void)updateScrollingMetrics
+{
+    NSSize contentSize = self.contentView.frame.size;
+    NSSize viewportSize = NSMakeSize(NSMinX(self.verticalScrollbar.frame),
+                                    NSMinY(self.horizontalScrollbar.frame) - NSMinY(self.contentViewContainer.frame));
+
+    BOOL canScrollHorizontally = contentSize.width > self.frame.size.width;
+    BOOL canScrollVertically = contentSize.height > self.frame.size.height;
+
+    CGFloat horizontalDistance = canScrollHorizontally ? MAX(contentSize.width - viewportSize.width, 0.0) : 0.0;
+    CGFloat verticalDistance = canScrollVertically ? MAX(contentSize.height - viewportSize.height, 0.0) : 0.0;
+
+    self.scrollableDistance = NSMakeSize(horizontalDistance, verticalDistance);
+    activateHorizontalScrollbar = canScrollHorizontally;
+    activateVerticleScrollbar = canScrollVertically;
+
+    if (!canScrollHorizontally) {
         [[self horizontalScrollbar] setEnabled:NO];
         [[self horizontalScrollbar] disableScrollbar];
-        activateHorizontalScrollbar = NO;
     } else {
         [[self horizontalScrollbar] setEnabled:YES];
         [[self horizontalScrollbar] enableScrollbar];
-        activateHorizontalScrollbar = YES;
     }
     
-    if (self.contentView.frame.size.height <= self.frame.size.height) {
+    if (!canScrollVertically) {
         [[self verticalScrollbar] setEnabled:NO];
         [[self verticalScrollbar] disableScrollbar];
-        activateVerticleScrollbar = NO;
     } else {
         [[self verticalScrollbar] setEnabled:YES];
         [[self verticalScrollbar] enableScrollbar];
-        activateVerticleScrollbar = YES;
     }
+
+    [self setScrollPosition:self.currentScrollPosition];
+}
+
+- (void)setScrollPosition:(NSPoint)scrollPosition
+{
+    CGFloat clampedX = MIN(MAX(scrollPosition.x, -self.scrollableDistance.width), 0.0);
+    CGFloat clampedY = MIN(MAX(scrollPosition.y, -self.scrollableDistance.height), 0.0);
+
+    self.currentScrollPosition = NSMakePoint(clampedX, clampedY);
+    [self.contentView setFrameOrigin:self.currentScrollPosition];
+
+    CGFloat horizontalFraction = self.scrollableDistance.width > 0.0
+                               ? (-clampedX / self.scrollableDistance.width)
+                               : 0.0;
+    CGFloat verticalFraction = self.scrollableDistance.height > 0.0
+                             ? (-clampedY / self.scrollableDistance.height)
+                             : 0.0;
+
+    [self.horizontalScrollbar setScrollFraction:horizontalFraction];
+    [self.verticalScrollbar setScrollFraction:verticalFraction];
 }
 
 - (void)mouseUp:(NSEvent *)event

@@ -160,8 +160,18 @@
         }
         
         NSRect contentViewSize = self.scrollView.contentView.frame;
-        CGFloat newContentHeightSize = ((iconRow * 60.0) < contentViewSize.size.height) ? contentViewSize.size.height : (iconRow * 60.0);
-        NSRect newContentViewSize = NSMakeRect(contentViewSize.origin.x, contentViewSize.origin.y, contentViewSize.size.width, newContentHeightSize);
+        CGFloat contentBottom = 0.0;
+
+        for (NSView *iconView in self.scrollView.contentView.subviews) {
+            contentBottom = MAX(contentBottom, NSMaxY(iconView.frame));
+        }
+
+        CGFloat requiredContentHeight = contentBottom + 15.0;
+        CGFloat newContentHeightSize = MAX(requiredContentHeight, contentViewSize.size.height);
+        NSRect newContentViewSize = NSMakeRect(0.0,
+                                              0.0,
+                                              contentViewSize.size.width,
+                                              newContentHeightSize);
         [self.scrollView resizeContentView:newContentViewSize];
         
         [self setInitialFirstResponder:self.scrollView];

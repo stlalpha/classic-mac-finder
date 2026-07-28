@@ -13,8 +13,7 @@ typedef NS_ENUM(NSUInteger, ScrollDirection) {
                                 withMaxContentSize:(CGFloat)maxContentSize;
 + (CCIScrollbar *)verticalScrollbarForScrollView:(CCIScrollView *)scrollView
                               withMaxContentSize:(CGFloat)maxContentSize;
-- (void)setScrollerYPosition:(CGFloat)yPOS;
-- (void)setScrollerXPosition:(CGFloat)xPOS;
+- (void)setScrollFraction:(CGFloat)scrollFraction;
 - (void)updateMaxContentSize:(CGFloat)newMaxContentSize;
 - (void)enableScrollbar;
 - (void)disableScrollbar;
