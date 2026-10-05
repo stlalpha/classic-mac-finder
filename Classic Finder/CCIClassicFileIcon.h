@@ -22,6 +22,9 @@
 @interface CCIClassicFileIcon : NSControl
 
 @property (nonatomic) BOOL applicationIcon;
+@property (nonatomic, strong) NSImage *applicationImage;
+
++ (NSImage *)macOS9StyledApplicationIconForURL:(NSURL *)url;
 
 - (void)selectFile;
 - (void)deselectFile;

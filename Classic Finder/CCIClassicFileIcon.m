@@ -19,6 +19,70 @@
 
 #import "CCIClassicFileIcon.h"
 #import "CCIApplicationStyles.h"
+#import <math.h>
+
+static NSBitmapImageRep *CCIIconBitmap(NSUInteger width, NSUInteger height)
+{
+    return [[NSBitmapImageRep alloc] initWithBitmapDataPlanes:NULL
+                                                    pixelsWide:(NSInteger)width
+                                                    pixelsHigh:(NSInteger)height
+                                                 bitsPerSample:8
+                                               samplesPerPixel:4
+                                                      hasAlpha:YES
+                                                      isPlanar:NO
+                                                colorSpaceName:NSDeviceRGBColorSpace
+                                                   bitmapFormat:NSBitmapFormatAlphaFirst
+                                                    bytesPerRow:0
+                                                   bitsPerPixel:0];
+}
+
+static NSImage *CCIRenderMacOS9Icon(NSImage *source)
+{
+    const NSUInteger classicSize = 32;
+    NSBitmapImageRep *smallBitmap = CCIIconBitmap(classicSize, classicSize);
+    if (smallBitmap == nil) return source;
+
+    NSGraphicsContext *context = [NSGraphicsContext graphicsContextWithBitmapImageRep:smallBitmap];
+    [NSGraphicsContext saveGraphicsState];
+    [NSGraphicsContext setCurrentContext:context];
+    context.imageInterpolation = NSImageInterpolationHigh;
+    [source drawInRect:NSMakeRect(0, 0, classicSize, classicSize)
+              fromRect:NSZeroRect
+             operation:NSCompositingOperationSourceOver
+              fraction:1.0];
+    [context flushGraphics];
+    [NSGraphicsContext restoreGraphicsState];
+
+    // Classic Finder icons were authored for a small pixel grid. Reduce modern
+    // app artwork to that grid, soften vector gradients into a compact palette,
+    // then scale it back with nearest-neighbor sampling for crisp Retina edges.
+    NSBitmapImageRep *retinaBitmap = CCIIconBitmap(classicSize * 2, classicSize * 2);
+    if (retinaBitmap == nil) return [[NSImage alloc] initWithCGImage:smallBitmap.CGImage size:NSMakeSize(classicSize, classicSize)];
+    retinaBitmap.size = NSMakeSize(classicSize, classicSize);
+
+    for (NSUInteger y = 0; y < classicSize; y++) {
+        for (NSUInteger x = 0; x < classicSize; x++) {
+            NSColor *color = [[smallBitmap colorAtX:(NSInteger)x y:(NSInteger)y] colorUsingColorSpace:[NSColorSpace deviceRGBColorSpace]];
+            CGFloat red = 0.0, green = 0.0, blue = 0.0, alpha = 0.0;
+            [color getRed:&red green:&green blue:&blue alpha:&alpha];
+            if (alpha > 0.0) {
+                const CGFloat paletteSteps = 7.0;
+                red = round(red * paletteSteps) / paletteSteps;
+                green = round(green * paletteSteps) / paletteSteps;
+                blue = round(blue * paletteSteps) / paletteSteps;
+            }
+            NSColor *pixel = [NSColor colorWithDeviceRed:red green:green blue:blue alpha:alpha];
+            [retinaBitmap setColor:pixel atX:(NSInteger)(x * 2) y:(NSInteger)(y * 2)];
+            [retinaBitmap setColor:pixel atX:(NSInteger)(x * 2 + 1) y:(NSInteger)(y * 2)];
+            [retinaBitmap setColor:pixel atX:(NSInteger)(x * 2) y:(NSInteger)(y * 2 + 1)];
+            [retinaBitmap setColor:pixel atX:(NSInteger)(x * 2 + 1) y:(NSInteger)(y * 2 + 1)];
+        }
+    }
+
+    NSImage *styledImage = [[NSImage alloc] initWithSize:NSMakeSize(classicSize, classicSize)];
+    [styledImage addRepresentation:retinaBitmap];
+    return styledImage;
+}
 
 @interface CCIClassicFileIcon()
 
@@ -27,6 +91,23 @@
 @end
 
 @implementation CCIClassicFileIcon
+
++ (NSImage *)macOS9StyledApplicationIconForURL:(NSURL *)url
+{
+    if (url == nil || !url.isFileURL) return nil;
+    static NSCache<NSString *, NSImage *> *iconCache;
+    static dispatch_once_t onceToken;
+    dispatch_once(&onceToken, ^{ iconCache = [[NSCache alloc] init]; });
+
+    NSString *cacheKey = url.standardizedURL.path;
+    NSImage *cachedImage = [iconCache objectForKey:cacheKey];
+    if (cachedImage != nil) return cachedImage;
+
+    NSImage *systemIcon = [[NSWorkspace sharedWorkspace] iconForFile:cacheKey];
+    NSImage *styledImage = CCIRenderMacOS9Icon(systemIcon);
+    if (styledImage != nil) [iconCache setObject:styledImage forKey:cacheKey];
+    return styledImage;
+}
 
 - (instancetype)initWithFrame:(NSRect)frameRect
 {
@@ -43,8 +124,8 @@
     [super drawRect:dirtyRect];
 
     if ([CCIApplicationStyles instance].appearanceVersion == CCIClassicAppearanceMacOS9) {
-        NSString *imageName = self.applicationIcon ? @"MacOS9Application" : @"MacOS9Document";
-        NSImage *fileImage = [NSImage imageNamed:imageName];
+        NSImage *fileImage = self.applicationIcon ? self.applicationImage : [NSImage imageNamed:@"MacOS9Document"];
+        if (fileImage == nil && self.applicationIcon) fileImage = [NSImage imageNamed:@"MacOS9Application"];
         if (fileImage != nil) {
             [fileImage drawInRect:self.bounds fromRect:NSZeroRect operation:NSCompositingOperationSourceOver fraction:1.0 respectFlipped:self.isFlipped hints:nil];
             return;

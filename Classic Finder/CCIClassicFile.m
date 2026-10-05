@@ -51,6 +51,9 @@ static NSString *CCITruncatedFileIconTitle(NSString *title, NSFont *font, CGFloa
 {
     _fileModel = fileModel;
     self.iconImage.applicationIcon = [fileModel.objectPath.pathExtension caseInsensitiveCompare:@"app"] == NSOrderedSame;
+    self.iconImage.applicationImage = self.iconImage.applicationIcon
+        ? [CCIClassicFileIcon macOS9StyledApplicationIconForURL:fileModel.objectPath]
+        : nil;
     [self.iconImage setNeedsDisplay:YES];
 }
 

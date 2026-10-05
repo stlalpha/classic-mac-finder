@@ -25,6 +25,7 @@
 #import "CCIScrollContentView.h"
 #import "CCIClassicFolder.h"
 #import "CCIClassicFile.h"
+#import "CCIClassicFileIcon.h"
 #import "CFRWindowManager.h"
 #import "CFRDirectoryModel.h"
 #import "CFRFileModel.h"
@@ -67,10 +68,10 @@ static NSString *CCIListDisplayTitle(id<CFRFileSystemObject> item)
 - (void)drawSmallIcon
 {
     if ([CCIApplicationStyles instance].appearanceVersion == CCIClassicAppearanceMacOS9) {
-        NSString *imageName = [self.item isKindOfClass:CFRDirectoryModel.class]
-            ? @"MacOS9Folder"
-            : ([self.item.objectPath.pathExtension caseInsensitiveCompare:@"app"] == NSOrderedSame ? @"MacOS9Application" : @"MacOS9Document");
-        NSImage *image = [NSImage imageNamed:imageName];
+        BOOL isFolder = [self.item isKindOfClass:CFRDirectoryModel.class];
+        BOOL isApplication = [self.item.objectPath.pathExtension caseInsensitiveCompare:@"app"] == NSOrderedSame;
+        NSString *imageName = isFolder ? @"MacOS9Folder" : (isApplication ? @"MacOS9Application" : @"MacOS9Document");
+        NSImage *image = isApplication ? [CCIClassicFileIcon macOS9StyledApplicationIconForURL:self.item.objectPath] : [NSImage imageNamed:imageName];
         if (image != nil) {
             [image drawInRect:NSMakeRect(1, 1, 20, 20) fromRect:NSZeroRect operation:NSCompositingOperationSourceOver fraction:1.0 respectFlipped:self.isFlipped hints:nil];
             return;
