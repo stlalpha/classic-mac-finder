@@ -19,6 +19,10 @@
 
 #import <Cocoa/Cocoa.h>
 
+@class CCIClassicFinderWindowController;
+
 @interface CCIScrollContentView : NSView
+
+@property (nonatomic, weak) CCIClassicFinderWindowController *finderWindowController;
 
 @end

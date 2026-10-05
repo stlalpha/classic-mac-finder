@@ -71,6 +71,7 @@
         // // Create content view
         NSRect contentViewFrame = NSMakeRect(0.0, 1.0, frameRect.size.width, (frameRect.size.height - 1.0));
         CCIScrollContentView *contentView = [[CCIScrollContentView alloc] initWithFrame:contentViewFrame];
+        contentView.finderWindowController = wc;
         [self setContentView:contentView];
         //[self addSubview:self.contentView];
         [[self contentViewContainer] addSubview:contentView];

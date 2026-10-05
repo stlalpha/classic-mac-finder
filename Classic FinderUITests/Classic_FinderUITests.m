@@ -27,6 +27,12 @@
 
 @implementation Classic_FinderUITests
 
+- (XCUIElement *)itemWithLabel:(NSString *)label
+{
+    NSPredicate *predicate = [NSPredicate predicateWithFormat:@"label == %@", label];
+    return [[self.application descendantsMatchingType:XCUIElementTypeAny] matchingPredicate:predicate].firstMatch;
+}
+
 - (void)setUp
 {
     [super setUp];
@@ -66,7 +72,7 @@
 
     XCUIElement *itemCount = self.application.staticTexts.firstMatch;
     XCTAssertTrue([itemCount waitForExistenceWithTimeout:10.0]);
-    XCUIElement *usersFolder = self.application.buttons[@"Users"];
+    XCUIElement *usersFolder = [self itemWithLabel:@"Users"];
     XCTAssertTrue([usersFolder waitForExistenceWithTimeout:10.0]);
     [self.application activate];
     [[usersFolder coordinateWithNormalizedOffset:CGVectorMake(0.5, 0.5)] doubleTap];
@@ -103,11 +109,11 @@
 {
     [self.application launch];
 
-    XCUIElement *usersFolder = self.application.buttons[@"Users"];
+    XCUIElement *usersFolder = [self itemWithLabel:@"Users"];
     XCTAssertTrue([usersFolder waitForExistenceWithTimeout:10.0]);
     [[usersFolder coordinateWithNormalizedOffset:CGVectorMake(0.5, 0.5)] doubleTap];
 
-    XCUIElement *homeFolder = self.application.buttons[@"jm"];
+    XCUIElement *homeFolder = [self itemWithLabel:@"jm"];
     XCTAssertTrue([homeFolder waitForExistenceWithTimeout:10.0]);
     [[homeFolder coordinateWithNormalizedOffset:CGVectorMake(0.5, 0.5)] doubleTap];
 

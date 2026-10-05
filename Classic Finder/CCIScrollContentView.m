@@ -18,8 +18,88 @@
 // limitations under the License.
 
 #import "CCIScrollContentView.h"
+#import "CCIClassicFinderWindowController.h"
+#import "CCIFinderIconProtocol.h"
+
+@interface CCIScrollContentView ()
+
+@property (nonatomic) NSPoint selectionAnchor;
+@property (nonatomic) NSRect selectionRect;
+@property (nonatomic) BOOL selectionInProgress;
+@property (nonatomic) BOOL selectionDragged;
+@property (nonatomic, copy) NSArray<NSView *> *selectionAtMouseDown;
+@property (nonatomic) NSEventModifierFlags selectionModifiers;
+
+@end
 
 @implementation CCIScrollContentView
+
+- (void)mouseDown:(NSEvent *)event
+{
+    self.selectionAnchor = [self convertPoint:event.locationInWindow fromView:nil];
+    self.selectionRect = NSMakeRect(self.selectionAnchor.x, self.selectionAnchor.y, 0.0, 0.0);
+    self.selectionInProgress = YES;
+    self.selectionDragged = NO;
+    self.selectionAtMouseDown = [self.finderWindowController selectedIconViews];
+    self.selectionModifiers = event.modifierFlags & (NSEventModifierFlagShift | NSEventModifierFlagCommand);
+
+    BOOL modified = self.selectionModifiers != 0;
+    if (!modified) [self.finderWindowController deselectAllItems];
+}
+
+- (void)mouseDragged:(NSEvent *)event
+{
+    if (!self.selectionInProgress) return;
+    NSPoint currentPoint = [self convertPoint:event.locationInWindow fromView:nil];
+    self.selectionRect = NSMakeRect(MIN(self.selectionAnchor.x, currentPoint.x),
+                                    MIN(self.selectionAnchor.y, currentPoint.y),
+                                    fabs(currentPoint.x - self.selectionAnchor.x),
+                                    fabs(currentPoint.y - self.selectionAnchor.y));
+    self.selectionDragged = self.selectionDragged || (fabs(currentPoint.x - self.selectionAnchor.x) > 3.0 || fabs(currentPoint.y - self.selectionAnchor.y) > 3.0);
+    if (self.selectionDragged) {
+        NSMutableArray<NSView *> *intersectingItems = [NSMutableArray array];
+        for (NSView *item in self.subviews) {
+            if (![item conformsToProtocol:@protocol(CCIFinderIconProtocol)]) continue;
+            if (NSIntersectsRect(self.selectionRect, item.frame)) [intersectingItems addObject:item];
+        }
+        if ((self.selectionModifiers & NSEventModifierFlagCommand) != 0) {
+            NSMutableArray<NSView *> *toggledItems = [self.selectionAtMouseDown mutableCopy];
+            for (NSView *item in intersectingItems) {
+                NSUInteger index = [toggledItems indexOfObjectIdenticalTo:item];
+                if (index == NSNotFound) [toggledItems addObject:item];
+                else [toggledItems removeObjectAtIndex:index];
+            }
+            [self.finderWindowController selectIconViews:toggledItems];
+        } else if ((self.selectionModifiers & NSEventModifierFlagShift) != 0) {
+            NSMutableOrderedSet<NSView *> *combinedItems = [NSMutableOrderedSet orderedSetWithArray:self.selectionAtMouseDown];
+            [combinedItems addObjectsFromArray:intersectingItems];
+            [self.finderWindowController selectIconViews:combinedItems.array];
+        } else {
+            [self.finderWindowController selectIconViews:intersectingItems];
+        }
+    }
+    [self setNeedsDisplay:YES];
+}
+
+- (void)mouseUp:(NSEvent *)event
+{
+    self.selectionInProgress = NO;
+    self.selectionDragged = NO;
+    self.selectionRect = NSZeroRect;
+    [self setNeedsDisplay:YES];
+}
+
+- (void)drawRect:(NSRect)dirtyRect
+{
+    [super drawRect:dirtyRect];
+    if (self.selectionRect.size.width < 2.0 || self.selectionRect.size.height < 2.0) return;
+
+    NSBezierPath *marquee = [NSBezierPath bezierPathWithRect:self.selectionRect];
+    CGFloat dashPattern[] = {2.0, 2.0};
+    [marquee setLineDash:dashPattern count:2 phase:0.0];
+    [NSColor.blackColor setStroke];
+    [marquee stroke];
+}
 
 //- (void)drawRect:(NSRect)dirtyRect {
 //    [super drawRect:dirtyRect];

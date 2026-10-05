@@ -184,6 +184,23 @@
     [self.selectedFiles addObject:item];
 }
 
+- (void)selectIconViews:(NSArray<NSView *> *)items
+{
+    [self deselectAllItems];
+    for (NSView *item in items) {
+        if (![item conformsToProtocol:@protocol(CCIFinderIconProtocol)]) continue;
+        [(id<CCIFinderIconProtocol>)item selectItem];
+        [self.selectedFiles addObject:item];
+    }
+}
+
+- (NSArray<NSView *> *)selectedIconViews
+{
+    return [self.selectedFiles filteredArrayUsingPredicate:[NSPredicate predicateWithBlock:^BOOL(id item, NSDictionary *bindings) {
+        return [item isKindOfClass:NSView.class] && [item conformsToProtocol:@protocol(CCIFinderIconProtocol)];
+    }]];
+}
+
 - (void)deselectAllItems
 {
     NSMutableArray *selectedFiles = [self selectedFiles];
