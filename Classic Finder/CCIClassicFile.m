@@ -52,7 +52,9 @@
         self.fileLabel.font = [[CCIApplicationStyles instance] classicBodyFontOfSize:10.0];
         self.fileLabel.bordered = NO;
         self.fileLabel.selectable = NO;
-        self.fileLabel.lineBreakMode = NSLineBreakByCharWrapping;
+        self.fileLabel.lineBreakMode = NSLineBreakByTruncatingTail;
+        self.fileLabel.usesSingleLineMode = YES;
+        self.fileLabel.maximumNumberOfLines = 1;
         self.fileLabel.drawsBackground = NO;
 
         [self normalFileTitleTextColor];
