@@ -33,6 +33,147 @@
 #import "CCIResizeOverlayOutline.h"
 #import "CCIApplicationStyles.h"
 #import "CFRFloppyDisk.h"
+#import "CFRFileSystemOperations.h"
+
+@class CCIClassicListRow;
+
+@interface CCIClassicFinderWindow (ListViewActions)
+- (void)selectListRow:(CCIClassicListRow *)row;
+- (void)openListItem:(id<CFRFileSystemObject>)item;
+- (void)sortListByStyle:(NSString *)style;
+@end
+
+@interface CCIClassicListRow : NSControl
+@property (nonatomic, strong) id<CFRFileSystemObject> item;
+@property (nonatomic, weak) CCIClassicFinderWindow *finderWindow;
+@property (nonatomic) BOOL selected;
+@property (nonatomic) BOOL compact;
+@property (nonatomic) BOOL buttonMode;
+@end
+
+static NSString *CCIListDisplayTitle(id<CFRFileSystemObject> item)
+{
+    NSString *title = item.title ?: @"";
+    if ([item.objectPath.pathExtension caseInsensitiveCompare:@"app"] == NSOrderedSame) return title.stringByDeletingPathExtension;
+    return title;
+}
+
+@implementation CCIClassicListRow
+- (BOOL)isFlipped { return YES; }
+- (BOOL)isAccessibilityElement { return YES; }
+- (NSString *)accessibilityLabel { return CCIListDisplayTitle(self.item); }
+- (NSString *)accessibilityRole { return self.buttonMode ? NSAccessibilityButtonRole : NSAccessibilityRowRole; }
+
+- (void)drawSmallIcon
+{
+    if ([CCIApplicationStyles instance].appearanceVersion == CCIClassicAppearanceMacOS9) {
+        NSString *imageName = [self.item isKindOfClass:CFRDirectoryModel.class]
+            ? @"MacOS9Folder"
+            : ([self.item.objectPath.pathExtension caseInsensitiveCompare:@"app"] == NSOrderedSame ? @"MacOS9Application" : @"MacOS9Document");
+        NSImage *image = [NSImage imageNamed:imageName];
+        if (image != nil) {
+            [image drawInRect:NSMakeRect(1, 1, 20, 20) fromRect:NSZeroRect operation:NSCompositingOperationSourceOver fraction:1.0 respectFlipped:self.isFlipped hints:nil];
+            return;
+        }
+    }
+    NSBezierPath *shape = [NSBezierPath bezierPath];
+    if ([self.item isKindOfClass:CFRDirectoryModel.class]) {
+        [shape moveToPoint:NSMakePoint(2, 5)]; [shape lineToPoint:NSMakePoint(6, 2)];
+        [shape lineToPoint:NSMakePoint(10, 2)]; [shape lineToPoint:NSMakePoint(13, 5)];
+        [shape lineToPoint:NSMakePoint(19, 5)]; [shape lineToPoint:NSMakePoint(19, 15)];
+        [shape lineToPoint:NSMakePoint(2, 15)]; [shape closePath];
+        NSColor *folderColor = [CCIApplicationStyles instance].appearanceVersion == CCIClassicAppearanceMacOS9
+            ? [NSColor colorWithCalibratedRed:0.78 green:0.80 blue:0.92 alpha:1.0]
+            : [NSColor colorWithCalibratedRed:0.82 green:0.82 blue:1.0 alpha:1.0];
+        [folderColor setFill];
+    } else {
+        [shape moveToPoint:NSMakePoint(5, 1)]; [shape lineToPoint:NSMakePoint(15, 1)];
+        [shape lineToPoint:NSMakePoint(19, 5)]; [shape lineToPoint:NSMakePoint(19, 15)];
+        [shape lineToPoint:NSMakePoint(5, 15)]; [shape closePath];
+        [NSColor.whiteColor setFill];
+    }
+    [shape fill]; [NSColor.blackColor setStroke]; [shape stroke];
+}
+
+- (void)drawRect:(NSRect)dirtyRect
+{
+    if (self.buttonMode) {
+        NSRect buttonRect = NSInsetRect(self.bounds, 1, 1);
+        NSGradient *gradient = [[NSGradient alloc] initWithStartingColor:[CCIApplicationStyles instance].appearanceVersion == CCIClassicAppearanceMacOS9 ? [NSColor colorWithCalibratedWhite:0.97 alpha:1.0] : NSColor.whiteColor
+                                                             endingColor:[CCIApplicationStyles instance].lightGrayColor];
+        [gradient drawInRect:buttonRect angle:90];
+        [[CCIApplicationStyles instance].darkGrayColor setStroke];
+        [NSBezierPath strokeRect:buttonRect];
+        [[[CCIApplicationStyles instance] whiteColor] setStroke];
+        NSBezierPath *highlight = [NSBezierPath bezierPath];
+        [highlight moveToPoint:NSMakePoint(2, NSMaxY(buttonRect) - 1)]; [highlight lineToPoint:NSMakePoint(NSMaxX(buttonRect) - 1, NSMaxY(buttonRect) - 1)]; [highlight stroke];
+        [self drawSmallIcon];
+        NSRect titleRect = NSMakeRect(27, 0, self.bounds.size.width - 30, self.bounds.size.height);
+        NSColor *titleColor = self.selected ? NSColor.whiteColor : NSColor.blackColor;
+        if (self.selected) { [[CCIApplicationStyles instance].darkPurpleColor setFill]; NSRectFill(NSMakeRect(25, 1, self.bounds.size.width - 26, self.bounds.size.height - 2)); }
+        NSDictionary *titleAttributes = @{NSFontAttributeName: [[CCIApplicationStyles instance] classicBodyFontOfSize:12], NSForegroundColorAttributeName: titleColor};
+        [CCIListDisplayTitle(self.item) drawInRect:NSInsetRect(titleRect, 2, 2) withAttributes:titleAttributes];
+        return;
+    }
+    CGFloat nameWidth = self.compact ? self.bounds.size.width : floor(self.bounds.size.width * 0.45);
+    NSRect nameRect = NSMakeRect(22, 0, nameWidth - 24, self.bounds.size.height);
+    NSDictionary *normal = @{NSFontAttributeName: [[CCIApplicationStyles instance] classicBodyFontOfSize:12], NSForegroundColorAttributeName: NSColor.blackColor};
+    if (self.selected) {
+        [[[CCIApplicationStyles instance] darkPurpleColor] setFill];
+        NSRectFill(nameRect);
+    } else if (self.item.labelIndex > 0) {
+        [[[CCIApplicationStyles instance] labelColorForIndex:self.item.labelIndex] setFill];
+        NSRectFill(nameRect);
+    }
+    [self drawSmallIcon];
+    NSDictionary *titleAttrs = self.selected ? @{NSFontAttributeName: [[CCIApplicationStyles instance] classicBodyFontOfSize:12], NSForegroundColorAttributeName: NSColor.whiteColor} : normal;
+    NSString *title = CCIListDisplayTitle(self.item);
+    [title drawInRect:NSInsetRect(nameRect, 2, 2) withAttributes:titleAttrs];
+    if (self.compact) return;
+
+    CGFloat kindX = self.bounds.size.width * 0.47;
+    CGFloat sizeX = self.bounds.size.width * 0.67;
+    CGFloat dateX = self.bounds.size.width * 0.82;
+    BOOL isApplication = [self.item.objectPath.pathExtension caseInsensitiveCompare:@"app"] == NSOrderedSame;
+    NSString *kind = [self.item isKindOfClass:CFRDirectoryModel.class] ? @"Folder" : (isApplication ? @"Application" : (self.item.objectPath.pathExtension.length ? self.item.objectPath.pathExtension.uppercaseString : @"Document"));
+    unsigned long long bytes = [[[NSFileManager defaultManager] attributesOfItemAtPath:self.item.objectPath.path error:nil][NSFileSize] unsignedLongLongValue];
+    NSString *size = ([self.item isKindOfClass:CFRDirectoryModel.class] || isApplication) ? @"—" : [NSByteCountFormatter stringFromByteCount:(long long)bytes countStyle:NSByteCountFormatterCountStyleFile];
+    NSString *date = self.item.lastModified ? [NSDateFormatter localizedStringFromDate:self.item.lastModified dateStyle:NSDateFormatterShortStyle timeStyle:NSDateFormatterShortStyle] : @"";
+    [kind drawAtPoint:NSMakePoint(kindX, 3) withAttributes:normal];
+    [size drawAtPoint:NSMakePoint(sizeX, 3) withAttributes:normal];
+    [date drawAtPoint:NSMakePoint(dateX, 3) withAttributes:normal];
+    [[CCIApplicationStyles instance].midGrayColor setStroke];
+    NSBezierPath *separator = [NSBezierPath bezierPath]; [separator moveToPoint:NSMakePoint(0, self.bounds.size.height - 0.5)]; [separator lineToPoint:NSMakePoint(self.bounds.size.width, self.bounds.size.height - 0.5)]; [separator stroke];
+}
+
+- (void)mouseDown:(NSEvent *)event { [self.finderWindow selectListRow:self]; }
+- (void)mouseUp:(NSEvent *)event { if (event.clickCount > 1) [self.finderWindow openListItem:self.item]; }
+@end
+
+@interface CCIClassicListHeader : NSView
+@property (nonatomic, weak) CCIClassicFinderWindow *finderWindow;
+@end
+
+@implementation CCIClassicListHeader
+- (BOOL)isFlipped { return YES; }
+- (void)drawRect:(NSRect)dirtyRect
+{
+    [[CCIApplicationStyles instance].midGrayColor setFill]; NSRectFill(self.bounds);
+    NSDictionary *attrs = @{NSFontAttributeName: [[CCIApplicationStyles instance] classicBodyFontOfSize:11], NSForegroundColorAttributeName: NSColor.blackColor};
+    [@[@"Name", @"Kind", @"Size", @"Date"] enumerateObjectsUsingBlock:^(NSString *title, NSUInteger index, BOOL *stop) {
+        CGFloat x = index == 0 ? 5 : (index == 1 ? self.bounds.size.width * 0.47 : (index == 2 ? self.bounds.size.width * 0.67 : self.bounds.size.width * 0.82));
+        [title drawAtPoint:NSMakePoint(x, 3) withAttributes:attrs];
+    }];
+    [[CCIApplicationStyles instance].darkGrayColor setStroke]; NSBezierPath *line = [NSBezierPath bezierPath];
+    [line moveToPoint:NSMakePoint(0, self.bounds.size.height - 0.5)]; [line lineToPoint:NSMakePoint(self.bounds.size.width, self.bounds.size.height - 0.5)]; [line stroke];
+}
+- (void)mouseDown:(NSEvent *)event
+{
+    CGFloat x = [self convertPoint:event.locationInWindow fromView:nil].x;
+    NSString *style = x < self.bounds.size.width * 0.45 ? @"Name" : (x < self.bounds.size.width * 0.65 ? @"Kind" : (x < self.bounds.size.width * 0.8 ? @"Size" : @"Date"));
+    [self.finderWindow sortListByStyle:style];
+}
+@end
 
 @interface CCIClassicFinderWindow () {
     BOOL windowIsActive;
@@ -43,6 +184,7 @@
 @property (nonatomic, strong) CCIScrollView *scrollView;
 @property (nonatomic, strong) CCIResizeOverlayOutline *resizeOverlay;
 @property (nonatomic, copy) NSString *displayStyle;
+@property (nonatomic, weak) CCIClassicListRow *selectedListRow;
 
 @end
 
@@ -103,6 +245,7 @@
         self.scrollView = [[CCIScrollView alloc] initWithFrame:scrollViewFrame
                                                  andController:self.windowController];
         [self.contentView addSubview:self.scrollView];
+        _displayStyle = @"Icon";
         
         NSUInteger iconRow = 0;
         NSUInteger iconCol = 0;
@@ -114,12 +257,12 @@
             {
                 CFRDirectoryModel *directoryItem = (CFRDirectoryModel *)fileSystemItem;
                 
-                CGFloat iconLeftPosition = (10.0 + (iconCol * 60.0));
-                CGFloat frameWidthWithBorder = (self.frame.size.width - 55.0);
+                CGFloat iconLeftPosition = (10.0 + (iconCol * 80.0));
+                CGFloat frameWidthWithBorder = (self.frame.size.width - 70.0);
                 if (iconLeftPosition > frameWidthWithBorder) {
                     iconRow += 1;
                     iconCol = 0;
-                    iconLeftPosition = (10.0 + (iconCol * 60.0));
+                    iconLeftPosition = (10.0 + (iconCol * 80.0));
                 }
                 
                 CGFloat iconTopPosition = 15.0 + (iconRow * 60.0);
@@ -134,19 +277,19 @@
                                                 60.0);
                 
                 CCIClassicFolder *folderIcon = [[CCIClassicFolder alloc] initWithFrame:folderFrame];
-                [folderIcon setFolderTitleText:[directoryItem title]];
                 [folderIcon setDirectoryModel:directoryItem];
+                [folderIcon setFolderTitleText:[directoryItem title]];
                 
                 [self.scrollView.contentView addSubview:folderIcon];
             } else if ([fileSystemItem isMemberOfClass:[CFRFileModel class]]) {
                 CFRFileModel *fileItem = (CFRFileModel *)fileSystemItem;
                 
-                CGFloat iconLeftPosition = (10.0 + (iconCol * 60.0));
-                CGFloat frameWidthWithBorder = (self.frame.size.width - 55.0);
+                CGFloat iconLeftPosition = (10.0 + (iconCol * 80.0));
+                CGFloat frameWidthWithBorder = (self.frame.size.width - 70.0);
                 if (iconLeftPosition > frameWidthWithBorder) {
                     iconRow += 1;
                     iconCol = 0;
-                    iconLeftPosition = (10.0 + (iconCol * 60.0));
+                    iconLeftPosition = (10.0 + (iconCol * 80.0));
                 }
                 
                 CGFloat iconTopPosition = 15.0 + (iconRow * 60.0);
@@ -161,6 +304,7 @@
                                                 60.0);
                 
                 CCIClassicFile *fileIcon = [[CCIClassicFile alloc] initWithFrame:folderFrame];
+                fileIcon.fileModel = fileItem;
                 [fileIcon setFileTitleText:[fileItem title]];
                 fileIcon.representedFile = [fileItem objectPath];
                 
@@ -176,6 +320,9 @@
         [self.scrollView resizeContentView:newContentViewSize];
         
         [self setInitialFirstResponder:self.scrollView];
+        CCIClassicFinderWindowController *windowController = (CCIClassicFinderWindowController *)self.windowController;
+        NSString *savedDisplayStyle = windowController.directoryModel.displayStyle ?: @"Icon";
+        if (![savedDisplayStyle isEqualToString:@"Icon"]) [self setDisplayStyle:savedDisplayStyle];
     }
     
     return self;
@@ -260,6 +407,10 @@
 - (void)setDisplayStyle:(NSString *)style
 {
     _displayStyle = [style copy];
+    CCIClassicFinderWindowController *controller = (CCIClassicFinderWindowController *)self.windowController;
+    controller.directoryModel.displayStyle = style;
+    [CFRFloppyDisk persistDirectoryProperties:controller.directoryModel];
+    self.selectedListRow = nil;
     CCIScrollContentView *content = self.scrollView.contentView;
     [content.subviews.copy enumerateObjectsUsingBlock:^(NSView *view, NSUInteger idx, BOOL *stop) { [view removeFromSuperview]; }];
 
@@ -277,24 +428,44 @@
                 NSComparisonResult kindOrder = [aKind localizedStandardCompare:bKind];
                 if (kindOrder != NSOrderedSame) return kindOrder;
             }
+            if ([style isEqualToString:@"Label"]) {
+                if (a.labelIndex != b.labelIndex) return a.labelIndex < b.labelIndex ? NSOrderedAscending : NSOrderedDescending;
+                return [a.title localizedStandardCompare:b.title];
+            }
             return [a.title localizedStandardCompare:b.title];
         }];
-        CGFloat rowHeight = 22.0;
+        BOOL compact = [style isEqualToString:@"Small Icon"];
+        BOOL buttons = [style isEqualToString:@"Buttons"];
+        if (buttons) {
+            CGFloat buttonWidth = 132.0, buttonHeight = 34.0, gapX = 8.0, gapY = 6.0;
+            NSUInteger columns = MAX(1, (NSUInteger)floor((content.bounds.size.width - 12.0) / (buttonWidth + gapX)));
+            [items enumerateObjectsUsingBlock:^(id<CFRFileSystemObject> item, NSUInteger idx, BOOL *stop) {
+                NSUInteger column = idx % columns, rowIndex = idx / columns;
+                CCIClassicListRow *button = [[CCIClassicListRow alloc] initWithFrame:NSMakeRect(6.0 + column * (buttonWidth + gapX), 6.0 + rowIndex * (buttonHeight + gapY), buttonWidth, buttonHeight)];
+                button.finderWindow = self; button.item = item; button.compact = YES; button.buttonMode = YES;
+                [content addSubview:button];
+            }];
+            NSRect size = content.frame;
+            size.size.height = MAX(self.scrollView.frame.size.height, ceil((CGFloat)items.count / columns) * (buttonHeight + gapY) + 12.0);
+            [self.scrollView resizeContentView:size];
+            return;
+        }
+        CGFloat headerHeight = compact ? 0.0 : 22.0;
+        CGFloat rowHeight = compact ? 24.0 : 22.0;
+        if (!compact) {
+            CCIClassicListHeader *header = [[CCIClassicListHeader alloc] initWithFrame:NSMakeRect(0, 0, content.bounds.size.width, headerHeight)];
+            header.finderWindow = self;
+            [content addSubview:header];
+        }
         [items enumerateObjectsUsingBlock:^(id<CFRFileSystemObject> item, NSUInteger idx, BOOL *stop) {
-            NSTextField *row = [[NSTextField alloc] initWithFrame:NSMakeRect(8.0, 7.0 + idx * rowHeight, content.bounds.size.width - 16.0, rowHeight)];
-            NSString *kind = [item isKindOfClass:CFRDirectoryModel.class] ? @"Folder" : (item.objectPath.pathExtension.length ? item.objectPath.pathExtension.uppercaseString : @"Document");
-            NSString *date = item.lastModified ? [NSDateFormatter localizedStringFromDate:item.lastModified dateStyle:NSDateFormatterShortStyle timeStyle:NSDateFormatterShortStyle] : @"";
-            unsigned long long bytes = [[[NSFileManager defaultManager] attributesOfItemAtPath:item.objectPath.path error:nil][NSFileSize] unsignedLongLongValue];
-            NSString *sizeText = [item isKindOfClass:CFRDirectoryModel.class] ? @"—" : [NSByteCountFormatter stringFromByteCount:(long long)bytes countStyle:NSByteCountFormatterCountStyleFile];
-            row.stringValue = [NSString stringWithFormat:@"%@     %@     %@     %@", item.title ?: @"", kind, sizeText, date];
-            row.font = [[CCIApplicationStyles instance] classicBodyFontOfSize:10.0];
-            row.textColor = NSColor.blackColor;
-            row.bordered = NO; row.editable = NO; row.drawsBackground = NO;
-            row.lineBreakMode = NSLineBreakByTruncatingTail;
+            CCIClassicListRow *row = [[CCIClassicListRow alloc] initWithFrame:NSMakeRect(0, headerHeight + 2.0 + idx * rowHeight, content.bounds.size.width, rowHeight)];
+            row.finderWindow = self;
+            row.item = item;
+            row.compact = compact;
             [content addSubview:row];
         }];
         NSRect size = content.frame;
-        size.size.height = MAX(self.scrollView.frame.size.height, items.count * rowHeight + 14.0);
+        size.size.height = MAX(self.scrollView.frame.size.height, items.count * rowHeight + headerHeight + 4.0);
         [self.scrollView resizeContentView:size];
         return;
     }
@@ -303,8 +474,8 @@
     NSArray *items = self.fileList;
     NSUInteger row = 0, col = 0;
     for (id<CFRFileSystemObject> item in items) {
-        CGFloat x = 10.0 + col * iconSize;
-        if (x > self.frame.size.width - 55.0) { row++; col = 0; x = 10.0; }
+        CGFloat x = 10.0 + col * 80.0;
+        if (x > self.frame.size.width - 70.0) { row++; col = 0; x = 10.0; }
         NSPoint savedPosition = item.iconPosition;
         NSRect frame = NSMakeRect(savedPosition.x >= 0.0 && savedPosition.y >= 0.0 ? savedPosition.x : x,
                                   savedPosition.x >= 0.0 && savedPosition.y >= 0.0 ? savedPosition.y : 15.0 + row * iconSize,
@@ -319,6 +490,41 @@
     NSRect size = content.frame; size.size.height = MAX(self.scrollView.frame.size.height, (row + 1) * iconSize + 15.0); [self.scrollView resizeContentView:size];
 }
 
+- (void)selectListRow:(CCIClassicListRow *)row
+{
+    self.selectedListRow.selected = NO;
+    [self.selectedListRow setNeedsDisplay:YES];
+    self.selectedListRow = row;
+    row.selected = YES;
+    [row setNeedsDisplay:YES];
+}
+
+- (void)sortListByStyle:(NSString *)style
+{
+    [self setDisplayStyle:style];
+}
+
+- (void)openListItem:(id<CFRFileSystemObject>)item
+{
+    if ([item isKindOfClass:CFRFileModel.class]) {
+        [CFRFileSystemOperations openFileAtURL:item.objectPath];
+        return;
+    }
+
+    CFRDirectoryModel *directory = (CFRDirectoryModel *)item;
+    [CFRFloppyDisk restoreDirectoryProperties:directory];
+    NSSize dimensions = directory.windowDimensions;
+    if (dimensions.width <= 0.0) dimensions.width = 500.0;
+    if (dimensions.height <= 0.0) dimensions.height = 300.0;
+    directory.windowDimensions = dimensions;
+    if (directory.windowPosition.x < 0.0 || directory.windowPosition.y < 0.0) {
+        directory.windowPosition = NSMakePoint(self.frame.origin.x + 30.0, self.frame.origin.y - 30.0);
+    }
+    [CFRFloppyDisk persistDirectoryProperties:directory];
+    CCIClassicFinderWindowController *controller = [[CFRWindowManager sharedInstance] createWindowForDirectory:directory];
+    [controller showWindow:self];
+}
+
 - (void)moveIconView:(NSView *)iconView toFrame:(NSRect)frame
 {
     iconView.frame = frame;
@@ -326,6 +532,18 @@
     model.iconPosition = frame.origin;
     if ([model isKindOfClass:CFRDirectoryModel.class]) [CFRFloppyDisk persistDirectoryProperties:(CFRDirectoryModel *)model];
     else if ([model isKindOfClass:CFRFileModel.class]) [CFRFloppyDisk persistFileProperties:(CFRFileModel *)model];
+}
+
+- (void)applyLabelIndex:(NSInteger)labelIndex
+{
+    if (self.selectedListRow != nil) {
+        self.selectedListRow.item.labelIndex = labelIndex;
+        if ([self.selectedListRow.item isKindOfClass:CFRDirectoryModel.class]) [CFRFloppyDisk persistDirectoryProperties:(CFRDirectoryModel *)self.selectedListRow.item];
+        else [CFRFloppyDisk persistFileProperties:(CFRFileModel *)self.selectedListRow.item];
+        [self.selectedListRow setNeedsDisplay:YES];
+    } else {
+        [(CCIClassicFinderWindowController *)self.windowController applyLabelIndex:labelIndex];
+    }
 }
 
 - (void)setWindowActive

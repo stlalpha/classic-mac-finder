@@ -21,6 +21,8 @@
 
 @interface CCIClassicFileIcon : NSControl
 
+@property (nonatomic) BOOL applicationIcon;
+
 - (void)selectFile;
 - (void)deselectFile;
 

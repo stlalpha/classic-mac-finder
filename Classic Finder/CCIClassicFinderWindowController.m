@@ -26,6 +26,7 @@
 #import "CCIClassicFolder.h"
 #import "CFRFileSystemUtils.h"
 #import "CFRDirectoryModel.h"
+#import "CFRFileModel.h"
 #import "CFRFloppyDisk.h"
 #import "CCIClassicContentView.h"
 
@@ -161,6 +162,25 @@
 - (void)moveIconView:(NSView *)iconView toFrame:(NSRect)frame
 {
     [(CCIClassicFinderWindow *)self.window moveIconView:iconView toFrame:frame];
+}
+
+- (void)applyLabelIndex:(NSInteger)labelIndex
+{
+    for (NSView *view in self.selectedFiles) {
+        if ([view isKindOfClass:CCIClassicFolder.class]) {
+            CCIClassicFolder *folder = (CCIClassicFolder *)view;
+            folder.directoryModel.labelIndex = labelIndex;
+            [CFRFloppyDisk persistDirectoryProperties:folder.directoryModel];
+            [folder setFolderTitleText:folder.folderLabel.stringValue];
+            [folder selectItem];
+        } else if ([view isKindOfClass:CCIClassicFile.class]) {
+            CCIClassicFile *file = (CCIClassicFile *)view;
+            file.fileModel.labelIndex = labelIndex;
+            [CFRFloppyDisk persistFileProperties:(CFRFileModel *)file.fileModel];
+            [file setFileTitleText:file.fileLabel.stringValue];
+            [file selectItem];
+        }
+    }
 }
 
 #pragma mark - TITLEBAR DELEGATE METHODS

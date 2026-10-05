@@ -24,6 +24,7 @@
 #import "CFRDirectoryModel.h"
 #import "CFRFloppyDisk.h"
 #import "CFRFileSystemUtils.h"
+#import "CCIApplicationStyles.h"
 #import <CoreText/CoreText.h>
 
 @interface AppDelegate ()
@@ -185,11 +186,66 @@
 }
 
 - (void)showBySmallIcon:(id)sender { [self applyViewStyle:@"Small Icon"]; }
+- (void)showAsButtons:(id)sender { [self applyViewStyle:@"Buttons"]; }
 - (void)showByIcon:(id)sender { [self applyViewStyle:@"Icon"]; }
 - (void)showByName:(id)sender { [self applyViewStyle:@"Name"]; }
 - (void)showBySize:(id)sender { [self applyViewStyle:@"Size"]; }
 - (void)showByKind:(id)sender { [self applyViewStyle:@"Kind"]; }
 - (void)showByLabel:(id)sender { [self applyViewStyle:@"Label"]; }
 - (void)showByDate:(id)sender { [self applyViewStyle:@"Date"]; }
+
+- (void)applyAppearanceVersion:(CCIClassicAppearanceVersion)version
+{
+    [CCIApplicationStyles.instance setAppearanceVersion:version];
+    for (NSWindow *window in NSApp.windows) [self markViewTreeForRedraw:window.contentView];
+}
+
+- (void)markViewTreeForRedraw:(NSView *)view
+{
+    [view setNeedsDisplay:YES];
+    for (NSView *child in view.subviews) [self markViewTreeForRedraw:child];
+}
+
+- (void)useSystem7Appearance:(id)sender { [self applyAppearanceVersion:CCIClassicAppearanceSystem7]; }
+- (void)useMacOS9Appearance:(id)sender { [self applyAppearanceVersion:CCIClassicAppearanceMacOS9]; }
+
+- (void)applyLabelIndex:(NSInteger)labelIndex
+{
+    CCIClassicFinderWindow *window = (CCIClassicFinderWindow *)NSApp.keyWindow;
+    if ([window isKindOfClass:CCIClassicFinderWindow.class]) [window applyLabelIndex:labelIndex];
+}
+
+- (void)setLabelNone:(id)sender { [self applyLabelIndex:0]; }
+- (void)setLabelEssential:(id)sender { [self applyLabelIndex:1]; }
+- (void)setLabelHot:(id)sender { [self applyLabelIndex:2]; }
+- (void)setLabelInProgress:(id)sender { [self applyLabelIndex:3]; }
+- (void)setLabelCool:(id)sender { [self applyLabelIndex:4]; }
+- (void)setLabelPersonal:(id)sender { [self applyLabelIndex:5]; }
+- (void)setLabelProject1:(id)sender { [self applyLabelIndex:6]; }
+- (void)setLabelProject2:(id)sender { [self applyLabelIndex:7]; }
+
+- (BOOL)validateMenuItem:(NSMenuItem *)menuItem
+{
+    SEL action = menuItem.action;
+    if (action == @selector(useSystem7Appearance:)) menuItem.state = CCIApplicationStyles.instance.appearanceVersion == CCIClassicAppearanceSystem7;
+    else if (action == @selector(useMacOS9Appearance:)) menuItem.state = CCIApplicationStyles.instance.appearanceVersion == CCIClassicAppearanceMacOS9;
+    else {
+        NSDictionary<NSString *, NSString *> *viewActions = @{
+            NSStringFromSelector(@selector(showByIcon:)): @"Icon",
+            NSStringFromSelector(@selector(showBySmallIcon:)): @"Small Icon",
+            NSStringFromSelector(@selector(showAsButtons:)): @"Buttons",
+            NSStringFromSelector(@selector(showByName:)): @"Name",
+            NSStringFromSelector(@selector(showBySize:)): @"Size",
+            NSStringFromSelector(@selector(showByKind:)): @"Kind",
+            NSStringFromSelector(@selector(showByLabel:)): @"Label",
+            NSStringFromSelector(@selector(showByDate:)): @"Date"
+        };
+        NSString *style = viewActions[NSStringFromSelector(action)];
+        CCIClassicFinderWindow *window = (CCIClassicFinderWindow *)NSApp.keyWindow;
+        if (style != nil && [window isKindOfClass:CCIClassicFinderWindow.class]) menuItem.state = [window.displayStyle isEqualToString:style];
+        else return YES;
+    }
+    return YES;
+}
 
 @end

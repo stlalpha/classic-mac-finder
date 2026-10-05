@@ -23,6 +23,18 @@
 #import "CCIClassicFinderWindowController.h"
 #import "CCIApplicationStyles.h"
 
+static NSString *CCITruncatedFileIconTitle(NSString *title, NSFont *font, CGFloat maxWidth)
+{
+    if (title.length == 0) return @"";
+    NSDictionary *attributes = @{NSFontAttributeName: font};
+    NSString *display = title;
+    while (display.length > 0 && [[display stringByAppendingString:@"…"] sizeWithAttributes:attributes].width > maxWidth) {
+        NSRange lastCharacter = [display rangeOfComposedCharacterSequenceAtIndex:display.length - 1];
+        display = [display stringByReplacingCharactersInRange:lastCharacter withString:@""];
+    }
+    return display.length == title.length ? title : [display stringByAppendingString:@"…"];
+}
+
 @interface CCIClassicFile()
 
 @property (nonatomic, copy) NSString *fileTitle;
@@ -34,6 +46,13 @@
 @end
 
 @implementation CCIClassicFile
+
+- (void)setFileModel:(id<CFRFileSystemObject>)fileModel
+{
+    _fileModel = fileModel;
+    self.iconImage.applicationIcon = [fileModel.objectPath.pathExtension caseInsensitiveCompare:@"app"] == NSOrderedSame;
+    [self.iconImage setNeedsDisplay:YES];
+}
 
 - (instancetype)initWithFrame:(NSRect)frameRect
 {
@@ -48,7 +67,7 @@
         
         [self addSubview:self.iconImage];
         
-        NSRect fileLabelFrame = NSMakeRect(6.5, 35.0, 55.0, 24.0);
+        NSRect fileLabelFrame = NSMakeRect(-3.5, 35.0, 75.0, 24.0);
         self.fileLabel = [[NSTextField alloc] initWithFrame:fileLabelFrame];
         self.fileLabel.alignment = NSTextAlignmentCenter;
         self.fileLabel.font = [[CCIApplicationStyles instance] classicBodyFontOfSize:10.0];
@@ -62,9 +81,25 @@
         [self normalFileTitleTextColor];
         
         [self addSubview:self.fileLabel];
+        [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(appearanceDidChange:) name:@"CCIClassicAppearanceDidChange" object:nil];
     }
     
     return self;
+}
+
+- (void)dealloc
+{
+    [[NSNotificationCenter defaultCenter] removeObserver:self];
+}
+
+- (void)appearanceDidChange:(NSNotification *)notification
+{
+    self.fileLabel.font = [[CCIApplicationStyles instance] classicBodyFontOfSize:10.0];
+    [self setFileTitleText:self.fileModel.title ?: @""];
+    if (self.fileSelected) [self reverseFileTitleTextColor];
+    else [self normalFileTitleTextColor];
+    [self.iconImage setNeedsDisplay:YES];
+    [self setNeedsDisplay:YES];
 }
 
 //- (void)drawRect:(NSRect)dirtyRect {
@@ -105,26 +140,37 @@
 
 - (void)normalFileTitleTextColor
 {
-    NSDictionary *attributes = @{
+    NSMutableParagraphStyle *paragraphStyle = [[NSParagraphStyle defaultParagraphStyle] mutableCopy];
+    paragraphStyle.alignment = NSTextAlignmentCenter;
+    paragraphStyle.lineBreakMode = NSLineBreakByTruncatingTail;
+    NSMutableDictionary *attributes = [@{
         NSForegroundColorAttributeName: [[CCIApplicationStyles instance] blackColor],
-        NSFontAttributeName: self.fileLabel.font
-    };
+        NSFontAttributeName: self.fileLabel.font,
+        NSParagraphStyleAttributeName: paragraphStyle
+    } mutableCopy];
+    if ([self.fileModel respondsToSelector:@selector(labelIndex)] && [self.fileModel labelIndex] > 0) attributes[NSBackgroundColorAttributeName] = [[CCIApplicationStyles instance] labelColorForIndex:[self.fileModel labelIndex]];
     self.fileLabel.attributedStringValue = [[NSAttributedString alloc] initWithString:self.fileLabel.stringValue
                                                                             attributes:attributes];
 }
 
 - (void)setFileTitleText:(NSString *)title
 {
-    self.fileLabel.stringValue = title ?: @"";
+    NSString *displayTitle = title ?: @"";
+    if ([self.fileModel.objectPath.pathExtension caseInsensitiveCompare:@"app"] == NSOrderedSame) displayTitle = displayTitle.stringByDeletingPathExtension;
+    self.fileLabel.stringValue = CCITruncatedFileIconTitle(displayTitle, self.fileLabel.font, self.fileLabel.frame.size.width - 4.0);
     [self normalFileTitleTextColor];
 }
 
 - (void)reverseFileTitleTextColor
 {
+    NSMutableParagraphStyle *paragraphStyle = [[NSParagraphStyle defaultParagraphStyle] mutableCopy];
+    paragraphStyle.alignment = NSTextAlignmentCenter;
+    paragraphStyle.lineBreakMode = NSLineBreakByTruncatingTail;
     NSDictionary *attributes = @{
         NSForegroundColorAttributeName: [[CCIApplicationStyles instance] whiteColor],
-        NSBackgroundColorAttributeName: [[CCIApplicationStyles instance] blackColor],
-        NSFontAttributeName: self.fileLabel.font
+        NSBackgroundColorAttributeName: [CCIApplicationStyles instance].appearanceVersion == CCIClassicAppearanceMacOS9 ? [[CCIApplicationStyles instance] darkPurpleColor] : [[CCIApplicationStyles instance] blackColor],
+        NSFontAttributeName: self.fileLabel.font,
+        NSParagraphStyleAttributeName: paragraphStyle
     };
     self.fileLabel.attributedStringValue = [[NSAttributedString alloc] initWithString:self.fileLabel.stringValue
                                                                             attributes:attributes];

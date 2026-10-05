@@ -34,6 +34,7 @@
 @synthesize fileSystemNumber;
 
 @synthesize iconPosition;
+@synthesize labelIndex;
 
 @synthesize executablePath;
 
@@ -47,6 +48,7 @@
         [self setLastModified:[NSDate date]];
         [self setObjectPath:[NSURL fileURLWithPath:@"/"]];
         [self setIconPosition:NSMakePoint(-1.0, -1.0)];
+        [self setLabelIndex:0];
         [self setExecutablePath:[NSURL fileURLWithPath:@"/"]];
     }
     
@@ -74,6 +76,7 @@
     
     if (self) {
         [self setIconPosition:[aDecoder decodePointForKey:@"iconPosition"]];
+        [self setLabelIndex:[aDecoder decodeIntegerForKey:@"labelIndex"]];
     }
     
     return self;
@@ -83,6 +86,7 @@
 {
     [aCoder encodeObject:self.uniqueID forKey:@"uniqueID"];
     [aCoder encodePoint:self.iconPosition forKey:@"iconPosition"];
+    [aCoder encodeInteger:self.labelIndex forKey:@"labelIndex"];
 }
 
 @end

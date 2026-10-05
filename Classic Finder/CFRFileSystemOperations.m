@@ -55,7 +55,8 @@
         NSDictionary *fileAttributes = [fileManager attributesOfItemAtPath:directoryItem.path error:nil];
         unsigned long long fileSystemNumber = [fileAttributes[NSFileSystemNumber] unsignedLongLongValue];
 
-        if (isDirectory.boolValue) {
+        BOOL isMacApplicationBundle = [directoryItem.pathExtension caseInsensitiveCompare:@"app"] == NSOrderedSame;
+        if (isDirectory.boolValue && !isMacApplicationBundle) {
             CFRDirectoryModel *directoryModel = [[CFRDirectoryModel alloc] init];
             directoryModel.title = title ?: directoryItem.lastPathComponent;
             directoryModel.creationDate = createdDate ?: [NSDate date];

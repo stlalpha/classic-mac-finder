@@ -19,10 +19,11 @@
 
 #import <Cocoa/Cocoa.h>
 #import "CCIFinderIconProtocol.h"
+#import "CFRFileSystemObject.h"
 
 @interface CCIClassicFile : NSControl <CCIFinderIconProtocol>
 
-@property (nonatomic, strong) id fileModel;
+@property (nonatomic, strong) id<CFRFileSystemObject> fileModel;
 @property (nonatomic, copy) NSURL *representedFile;
 @property (nonatomic, strong) NSTextField *fileLabel;
 

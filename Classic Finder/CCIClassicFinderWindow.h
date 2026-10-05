@@ -23,6 +23,7 @@
 
 @interface CCIClassicFinderWindow : NSWindow
 
+@property (nonatomic, readonly, copy) NSString *displayStyle;
 @property (nonatomic, copy) NSString* windowTitle;
 @property (nonatomic, copy) NSArray* fileList;
 
@@ -39,5 +40,6 @@
 - (void)finishedResizeToFrame:(NSRect)frameRect;
 - (void)setDisplayStyle:(NSString *)style;
 - (void)moveIconView:(NSView *)iconView toFrame:(NSRect)frame;
+- (void)applyLabelIndex:(NSInteger)labelIndex;
 
 @end

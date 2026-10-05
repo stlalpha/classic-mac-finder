@@ -19,6 +19,7 @@
 
 #import <XCTest/XCTest.h>
 #import "../Classic Finder/CFRDirectoryModel.h"
+#import "../Classic Finder/CFRFileModel.h"
 #import "../Classic Finder/CFRFileSystemOperations.h"
 #import "../Classic Finder/NSString+Hashes.h"
 
@@ -114,6 +115,42 @@
     XCTAssertNotNil(listing);
     XCTAssertEqual(listing.count, 0);
     XCTAssertNil(error);
+}
+
+- (void)testDirectoryLabelSurvivesSecureArchiveRoundTrip
+{
+    CFRDirectoryModel *directory = [[CFRDirectoryModel alloc] init];
+    directory.objectPath = [self.temporaryDirectoryURL URLByAppendingPathComponent:@"Labeled" isDirectory:YES];
+    directory.fileSystemNumber = 456;
+    directory.labelIndex = 5;
+    directory.displayStyle = @"Name";
+
+    NSError *error = nil;
+    NSData *archive = [NSKeyedArchiver archivedDataWithRootObject:directory requiringSecureCoding:YES error:&error];
+    XCTAssertNotNil(archive);
+    XCTAssertNil(error);
+
+    CFRDirectoryModel *restored = [NSKeyedUnarchiver unarchivedObjectOfClass:CFRDirectoryModel.class fromData:archive error:&error];
+    XCTAssertEqual(restored.labelIndex, 5);
+    XCTAssertEqualObjects(restored.displayStyle, @"Name");
+    XCTAssertNil(error);
+}
+
+- (void)testApplicationBundleIsListedAsAnApplicationFile
+{
+    NSURL *applicationURL = [self.temporaryDirectoryURL URLByAppendingPathComponent:@"ClassicApp.app" isDirectory:YES];
+    NSError *error = nil;
+    BOOL created = [[NSFileManager defaultManager] createDirectoryAtURL:applicationURL
+                                            withIntermediateDirectories:NO
+                                                             attributes:nil
+                                                                  error:&error];
+    XCTAssertTrue(created, @"Could not create test application bundle: %@", error);
+
+    NSArray *listing = [CFRFileSystemOperations getListingForDirectory:self.temporaryDirectoryURL error:&error];
+
+    XCTAssertNil(error);
+    XCTAssertEqual(listing.count, 1);
+    XCTAssertTrue([listing.firstObject isKindOfClass:CFRFileModel.class]);
 }
 
 @end

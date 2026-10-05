@@ -28,6 +28,7 @@
 @property unsigned long fileSystemNumber;
 
 @property NSPoint iconPosition;
+@property NSInteger labelIndex;
 
 - (NSString *)uniqueID;
 - (NSString *)objectType;

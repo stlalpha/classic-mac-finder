@@ -158,7 +158,8 @@
 
 - (void)drawOutlinesAndShadows
 {
-    [[[CCIApplicationStyles instance] lightGrayColor] setFill];
+    CCIApplicationStyles *styles = [CCIApplicationStyles instance];
+    [[styles lightGrayColor] setFill];
     NSRectFill(NSMakeRect(0.0, 0.0, self.frame.size.width, self.frame.size.height));
     
     
@@ -172,7 +173,7 @@
     [titlebarOutline lineToPoint: NSMakePoint(0.5, 0.5)];
     [titlebarOutline stroke];
     
-    [[[CCIApplicationStyles instance] lightPurpleColor] setStroke];
+    [(styles.appearanceVersion == CCIClassicAppearanceMacOS9 ? styles.whiteColor : styles.lightPurpleColor) setStroke];
     
     NSBezierPath *titlebarHighlight = [[NSBezierPath alloc] init];
     [titlebarHighlight moveToPoint:NSMakePoint(1.5, 1.5)];
@@ -180,7 +181,7 @@
     [titlebarHighlight lineToPoint:NSMakePoint(self.frame.size.width - 1.5, 17.5)];
     [titlebarHighlight stroke];
     
-    [[[CCIApplicationStyles instance] midPurpleColor] setStroke];
+    [(styles.appearanceVersion == CCIClassicAppearanceMacOS9 ? styles.darkGrayColor : styles.midPurpleColor) setStroke];
     
     NSBezierPath *titlebarShadow = [[NSBezierPath alloc] init];
     [titlebarShadow moveToPoint:NSMakePoint(1.0, 1.5)];
@@ -192,12 +193,13 @@
 
 - (void)drawInactiveOutlines
 {
-    // White Background
-    [[[CCIApplicationStyles instance] whiteColor] setFill];
+    CCIApplicationStyles *styles = [CCIApplicationStyles instance];
+    NSColor *inactiveFill = styles.appearanceVersion == CCIClassicAppearanceMacOS9 ? styles.lightGrayColor : styles.whiteColor;
+    [inactiveFill setFill];
     NSRectFill(NSMakeRect(0.0, 0.0, self.frame.size.width, self.frame.size.height));
     
-    // Black Box Border
-    [[[CCIApplicationStyles instance] blackColor] setStroke];
+    NSColor *outline = styles.appearanceVersion == CCIClassicAppearanceMacOS9 ? styles.midGrayColor : styles.blackColor;
+    [outline setStroke];
     
     NSBezierPath *titlebarOutline = [[NSBezierPath alloc] init];
     [titlebarOutline moveToPoint:NSMakePoint(0.5, 0.5)];
@@ -213,19 +215,21 @@
     CGFloat textureLineStartPos = 0.0;
     
     [NSGraphicsContext saveGraphicsState];
-    [[[CCIApplicationStyles instance] darkGrayColor] setStroke];
+    CCIApplicationStyles *styles = [CCIApplicationStyles instance];
+    [[styles darkGrayColor] setStroke];
     
     NSAffineTransform *textureTransform = [NSAffineTransform transform];
     [textureTransform translateXBy:2.5 yBy:4.5];
     [textureTransform concat];
     
-    for (NSUInteger x = 0; x < 6; x++) {
+    NSUInteger lineCount = styles.appearanceVersion == CCIClassicAppearanceMacOS9 ? 4 : 6;
+    for (NSUInteger x = 0; x < lineCount; x++) {
         NSBezierPath *line = [[NSBezierPath alloc] init];
         [line moveToPoint:NSMakePoint(0.0, textureLineStartPos)];
         [line lineToPoint:NSMakePoint(self.frame.size.width - 5.0, textureLineStartPos)];
         [line stroke];
         
-        textureLineStartPos += 2.0;
+        textureLineStartPos += styles.appearanceVersion == CCIClassicAppearanceMacOS9 ? 3.0 : 2.0;
     }
     
     [NSGraphicsContext restoreGraphicsState];

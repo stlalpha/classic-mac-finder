@@ -27,6 +27,18 @@
 #import "CFRFloppyDisk.h"
 #import "CFRDirectoryModel.h"
 
+static NSString *CCITruncatedIconTitle(NSString *title, NSFont *font, CGFloat maxWidth)
+{
+    if (title.length == 0) return @"";
+    NSDictionary *attributes = @{NSFontAttributeName: font};
+    NSString *display = title;
+    while (display.length > 0 && [[display stringByAppendingString:@"…"] sizeWithAttributes:attributes].width > maxWidth) {
+        NSRange lastCharacter = [display rangeOfComposedCharacterSequenceAtIndex:display.length - 1];
+        display = [display stringByReplacingCharactersInRange:lastCharacter withString:@""];
+    }
+    return display.length == title.length ? title : [display stringByAppendingString:@"…"];
+}
+
 @interface CCIClassicFolder ()
 
 @property (nonatomic, copy) NSString *folderTitle;
@@ -54,7 +66,7 @@
         
         [self addSubview:self.iconImage];
         
-        NSRect folderLabelFrame = NSMakeRect(2.5, 35.0, 55.0, 24.0);
+        NSRect folderLabelFrame = NSMakeRect(-7.5, 35.0, 75.0, 24.0);
         self.folderLabel = [[NSTextField alloc] initWithFrame:folderLabelFrame];
         self.folderLabel.alignment = NSTextAlignmentCenter;
         self.folderLabel.font = [[CCIApplicationStyles instance] classicBodyFontOfSize:10.0];
@@ -68,9 +80,25 @@
         [self normalFolderTitleTextColor];
         
         [self addSubview:self.folderLabel];
+        [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(appearanceDidChange:) name:@"CCIClassicAppearanceDidChange" object:nil];
     }
     
     return self;
+}
+
+- (void)dealloc
+{
+    [[NSNotificationCenter defaultCenter] removeObserver:self];
+}
+
+- (void)appearanceDidChange:(NSNotification *)notification
+{
+    self.folderLabel.font = [[CCIApplicationStyles instance] classicBodyFontOfSize:10.0];
+    [self setFolderTitleText:self.directoryModel.title ?: @""];
+    if (self.folderSelected) [self reverseFolderTitleTextColor];
+    else [self normalFolderTitleTextColor];
+    [self.iconImage setNeedsDisplay:YES];
+    [self setNeedsDisplay:YES];
 }
 
 - (void)drawRect:(NSRect)dirtyRect
@@ -191,26 +219,35 @@
 
 - (void)normalFolderTitleTextColor
 {
-    NSDictionary *attributes = @{
+    NSMutableParagraphStyle *paragraphStyle = [[NSParagraphStyle defaultParagraphStyle] mutableCopy];
+    paragraphStyle.alignment = NSTextAlignmentCenter;
+    paragraphStyle.lineBreakMode = NSLineBreakByTruncatingTail;
+    NSMutableDictionary *attributes = [@{
         NSForegroundColorAttributeName: [[CCIApplicationStyles instance] blackColor],
-        NSFontAttributeName: self.folderLabel.font
-    };
+        NSFontAttributeName: self.folderLabel.font,
+        NSParagraphStyleAttributeName: paragraphStyle
+    } mutableCopy];
+    if (self.directoryModel.labelIndex > 0) attributes[NSBackgroundColorAttributeName] = [[CCIApplicationStyles instance] labelColorForIndex:self.directoryModel.labelIndex];
     self.folderLabel.attributedStringValue = [[NSAttributedString alloc] initWithString:self.folderLabel.stringValue
                                                                               attributes:attributes];
 }
 
 - (void)setFolderTitleText:(NSString *)title
 {
-    self.folderLabel.stringValue = title ?: @"";
+    self.folderLabel.stringValue = CCITruncatedIconTitle(title ?: @"", self.folderLabel.font, self.folderLabel.frame.size.width - 4.0);
     [self normalFolderTitleTextColor];
 }
 
 - (void)reverseFolderTitleTextColor
 {
+    NSMutableParagraphStyle *paragraphStyle = [[NSParagraphStyle defaultParagraphStyle] mutableCopy];
+    paragraphStyle.alignment = NSTextAlignmentCenter;
+    paragraphStyle.lineBreakMode = NSLineBreakByTruncatingTail;
     NSDictionary *attributes = @{
         NSForegroundColorAttributeName: [[CCIApplicationStyles instance] whiteColor],
-        NSBackgroundColorAttributeName: [[CCIApplicationStyles instance] blackColor],
-        NSFontAttributeName: self.folderLabel.font
+        NSBackgroundColorAttributeName: [CCIApplicationStyles instance].appearanceVersion == CCIClassicAppearanceMacOS9 ? [[CCIApplicationStyles instance] darkPurpleColor] : [[CCIApplicationStyles instance] blackColor],
+        NSFontAttributeName: self.folderLabel.font,
+        NSParagraphStyleAttributeName: paragraphStyle
     };
     self.folderLabel.attributedStringValue = [[NSAttributedString alloc] initWithString:self.folderLabel.stringValue
                                                                               attributes:attributes];

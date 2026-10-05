@@ -152,6 +152,19 @@
                         </items>
                     </menu>
                 </menuItem>
+                <menuItem title="Appearance" id="classicAppearanceMenu">
+                    <modifierMask key="keyEquivalentModifierMask"/>
+                    <menu key="submenu" title="Appearance" id="classicAppearanceSubmenu">
+                        <items>
+                            <menuItem title="System 7" id="appearanceSystem7">
+                                <connections><action selector="useSystem7Appearance:" target="Voe-Tx-rLC" id="appearanceSystem7Action"/></connections>
+                            </menuItem>
+                            <menuItem title="Mac OS 9" id="appearanceMacOS9">
+                                <connections><action selector="useMacOS9Appearance:" target="Voe-Tx-rLC" id="appearanceMacOS9Action"/></connections>
+                            </menuItem>
+                        </items>
+                    </menu>
+                </menuItem>
                 <menuItem title="View" id="H8h-7b-M4v">
                     <modifierMask key="keyEquivalentModifierMask"/>
                     <menu key="submenu" title="View" id="HyV-fh-RgO">
@@ -159,6 +172,10 @@
                             <menuItem title="by Small Icon" id="14m-g1-3m2">
                                 <modifierMask key="keyEquivalentModifierMask"/>
                                 <connections><action selector="showBySmallIcon:" target="Voe-Tx-rLC" id="vsmallact"/></connections>
+                            </menuItem>
+                            <menuItem title="as Buttons" id="buttonViewItem">
+                                <modifierMask key="keyEquivalentModifierMask"/>
+                                <connections><action selector="showAsButtons:" target="Voe-Tx-rLC" id="vbuttonsact"/></connections>
                             </menuItem>
                             <menuItem title="by Icon" id="mBu-PO-GPu">
                                 <modifierMask key="keyEquivalentModifierMask"/>
@@ -193,28 +210,36 @@
                         <items>
                             <menuItem title="None" id="RYz-b9-tNn">
                                 <modifierMask key="keyEquivalentModifierMask"/>
+                                <connections><action selector="setLabelNone:" target="Voe-Tx-rLC" id="labNoneAction"/></connections>
                             </menuItem>
                             <menuItem isSeparatorItem="YES" id="qb6-0Y-d3I"/>
                             <menuItem title="Essential" id="E3s-6r-aDA">
                                 <modifierMask key="keyEquivalentModifierMask"/>
+                                <connections><action selector="setLabelEssential:" target="Voe-Tx-rLC" id="labEssentialAction"/></connections>
                             </menuItem>
                             <menuItem title="Hot" id="cGy-Ru-t3a">
                                 <modifierMask key="keyEquivalentModifierMask"/>
+                                <connections><action selector="setLabelHot:" target="Voe-Tx-rLC" id="labHotAction"/></connections>
                             </menuItem>
                             <menuItem title="In Progress" id="zNp-Kb-fZS">
                                 <modifierMask key="keyEquivalentModifierMask"/>
+                                <connections><action selector="setLabelInProgress:" target="Voe-Tx-rLC" id="labProgressAction"/></connections>
                             </menuItem>
                             <menuItem title="Cool" id="19z-Un-fiw">
                                 <modifierMask key="keyEquivalentModifierMask"/>
+                                <connections><action selector="setLabelCool:" target="Voe-Tx-rLC" id="labCoolAction"/></connections>
                             </menuItem>
                             <menuItem title="Personal" id="hTf-ie-CsS">
                                 <modifierMask key="keyEquivalentModifierMask"/>
+                                <connections><action selector="setLabelPersonal:" target="Voe-Tx-rLC" id="labPersonalAction"/></connections>
                             </menuItem>
                             <menuItem title="Project 1" id="IFe-es-Vqs">
                                 <modifierMask key="keyEquivalentModifierMask"/>
+                                <connections><action selector="setLabelProject1:" target="Voe-Tx-rLC" id="labProject1Action"/></connections>
                             </menuItem>
                             <menuItem title="Project 2" id="vit-UU-HUT">
                                 <modifierMask key="keyEquivalentModifierMask"/>
+                                <connections><action selector="setLabelProject2:" target="Voe-Tx-rLC" id="labProject2Action"/></connections>
                             </menuItem>
                         </items>
                     </menu>

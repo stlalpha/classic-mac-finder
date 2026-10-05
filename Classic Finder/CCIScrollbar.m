@@ -226,6 +226,21 @@
 
 - (void)drawTexturedBackground
 {
+    if ([CCIApplicationStyles instance].appearanceVersion == CCIClassicAppearanceMacOS9) {
+        [[[CCIApplicationStyles instance] lightGrayColor] setFill];
+        NSRectFill(self.bounds);
+        [[[CCIApplicationStyles instance] whiteColor] setStroke];
+        NSBezierPath *highlight = [NSBezierPath bezierPath];
+        [highlight moveToPoint:NSMakePoint(0.5, 0.5)];
+        [highlight lineToPoint:NSMakePoint(self.frame.size.width - 0.5, 0.5)];
+        [highlight stroke];
+        [[[CCIApplicationStyles instance] darkGrayColor] setStroke];
+        NSBezierPath *shadow = [NSBezierPath bezierPath];
+        [shadow moveToPoint:NSMakePoint(0.5, self.frame.size.height - 0.5)];
+        [shadow lineToPoint:NSMakePoint(self.frame.size.width - 0.5, self.frame.size.height - 0.5)];
+        [shadow stroke];
+        return;
+    }
     [[[CCIApplicationStyles instance] lightGrayColor] setFill];
     NSRectFill(NSMakeRect(0.0, 0.0, self.frame.size.width, self.frame.size.height));
     

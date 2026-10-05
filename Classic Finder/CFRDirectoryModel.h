@@ -24,6 +24,7 @@
 
 @property NSSize windowDimensions;
 @property NSPoint windowPosition;
+@property (nonatomic, copy) NSString *displayStyle;
 
 - (NSString *)legacyUniqueID;
 

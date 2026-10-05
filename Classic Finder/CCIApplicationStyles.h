@@ -20,7 +20,14 @@
 #import <Foundation/Foundation.h>
 #import <Cocoa/Cocoa.h>
 
+typedef NS_ENUM(NSInteger, CCIClassicAppearanceVersion) {
+    CCIClassicAppearanceSystem7 = 0,
+    CCIClassicAppearanceMacOS9 = 1
+};
+
 @interface CCIApplicationStyles : NSObject
+
+@property (nonatomic) CCIClassicAppearanceVersion appearanceVersion;
 
 + (instancetype)instance;
 
@@ -44,6 +51,7 @@
 - (NSColor *)folderSelectedShadowColor;
 - (NSColor *)folderOpenedBackgroundColor;
 - (NSColor *)folderOpenedAndSelectedBackgroundColor;
+- (NSColor *)labelColorForIndex:(NSInteger)labelIndex;
 
 - (NSFont *)classicBodyFontOfSize:(CGFloat)size;
 - (NSFont *)classicTitleFontOfSize:(CGFloat)size;

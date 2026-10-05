@@ -51,8 +51,8 @@
     [viewMenu click];
     [self.application.menuItems[@"by Name"] click];
 
-    NSPredicate *folderRow = [NSPredicate predicateWithFormat:@"label CONTAINS %@ AND label CONTAINS %@", @"Folder", @"Applications"];
-    XCUIElement *folderRowElement = [self.application.staticTexts matchingPredicate:folderRow].firstMatch;
+    NSPredicate *folderRow = [NSPredicate predicateWithFormat:@"label CONTAINS %@", @"Applications"];
+    XCUIElement *folderRowElement = [[self.application descendantsMatchingType:XCUIElementTypeAny] matchingPredicate:folderRow].firstMatch;
     XCTAssertTrue([folderRowElement waitForExistenceWithTimeout:5.0]);
 
     [viewMenu click];

@@ -43,6 +43,19 @@
 
 @implementation CCIApplicationStyles
 
+- (CCIClassicAppearanceVersion)appearanceVersion
+{
+    NSUserDefaults *defaults = NSUserDefaults.standardUserDefaults;
+    NSNumber *storedVersion = [defaults objectForKey:@"ClassicFinderAppearanceVersion"];
+    return storedVersion ? (CCIClassicAppearanceVersion)storedVersion.integerValue : CCIClassicAppearanceMacOS9;
+}
+
+- (void)setAppearanceVersion:(CCIClassicAppearanceVersion)appearanceVersion
+{
+    [[NSUserDefaults standardUserDefaults] setInteger:appearanceVersion forKey:@"ClassicFinderAppearanceVersion"];
+    [[NSNotificationCenter defaultCenter] postNotificationName:@"CCIClassicAppearanceDidChange" object:nil];
+}
+
 - (NSFont *)classicBodyFontOfSize:(CGFloat)size
 {
     return [NSFont fontWithName:@"Geneva" size:size] ?: [NSFont systemFontOfSize:size];
@@ -50,6 +63,11 @@
 
 - (NSFont *)classicTitleFontOfSize:(CGFloat)size
 {
+    if (self.appearanceVersion == CCIClassicAppearanceMacOS9) {
+        return [NSFont fontWithName:@"Charcoal" size:size]
+            ?: [NSFont fontWithName:@"ChicagoBold" size:size]
+            ?: [NSFont boldSystemFontOfSize:size];
+    }
     return [NSFont fontWithName:@"Chicago" size:size]
         ?: [NSFont fontWithName:@"ChicagoBold" size:size]
         ?: [NSFont boldSystemFontOfSize:size];
@@ -109,6 +127,7 @@
 
 - (NSColor *)darkPurpleColor
 {
+    if (self.appearanceVersion == CCIClassicAppearanceMacOS9) return [NSColor colorWithCalibratedRed:0.18 green:0.24 blue:0.42 alpha:1.0];
     if (darkPurpleColor == nil) {
         darkPurpleColor = [NSColor colorWithCalibratedRed:0.15
                                                     green:0.14
@@ -121,6 +140,7 @@
 
 - (NSColor *)midPurpleColor
 {
+    if (self.appearanceVersion == CCIClassicAppearanceMacOS9) return [NSColor colorWithCalibratedWhite:0.62 alpha:1.0];
     if (midPurpleColor == nil) {
         midPurpleColor = [NSColor colorWithCalibratedRed:0.58
                                                    green:0.57
@@ -133,6 +153,7 @@
 
 - (NSColor *)lightPurpleColor
 {
+    if (self.appearanceVersion == CCIClassicAppearanceMacOS9) return [NSColor colorWithCalibratedRed:0.76 green:0.83 blue:0.97 alpha:1.0];
     if (lightPurpleColor == nil) {
         lightPurpleColor = [NSColor colorWithCalibratedRed:0.76
                                                      green:0.76
@@ -145,6 +166,7 @@
 
 - (NSColor *)darkGrayColor
 {
+    if (self.appearanceVersion == CCIClassicAppearanceMacOS9) return [NSColor colorWithCalibratedWhite:0.48 alpha:1.0];
     if (darkGrayColor == nil) {
         darkGrayColor = [NSColor colorWithCalibratedWhite:0.38
                                                    alpha:1.0];
@@ -155,6 +177,7 @@
 
 - (NSColor *)midGrayColor
 {
+    if (self.appearanceVersion == CCIClassicAppearanceMacOS9) return [NSColor colorWithCalibratedWhite:0.70 alpha:1.0];
     if (midGrayColor == nil) {
         midGrayColor = [NSColor colorWithCalibratedWhite:0.58
                                                      alpha:1.0];
@@ -165,6 +188,7 @@
 
 - (NSColor *)lightGrayColor
 {
+    if (self.appearanceVersion == CCIClassicAppearanceMacOS9) return [NSColor colorWithCalibratedWhite:0.84 alpha:1.0];
     if (lightGrayColor == nil) {
         lightGrayColor = [NSColor colorWithCalibratedWhite:0.92
                                                      alpha:1.0];
@@ -177,6 +201,7 @@
 
 - (NSColor *)clickedMidGrayColor
 {
+    if (self.appearanceVersion == CCIClassicAppearanceMacOS9) return [NSColor colorWithCalibratedWhite:0.58 alpha:1.0];
     if (clickedMidGrayColor == nil) {
         clickedMidGrayColor = [NSColor colorWithCalibratedWhite:0.45
                                                           alpha:1.0];
@@ -187,6 +212,7 @@
 
 - (NSColor *)clickedDarkPurpleColor
 {
+    if (self.appearanceVersion == CCIClassicAppearanceMacOS9) return [NSColor colorWithCalibratedRed:0.12 green:0.18 blue:0.34 alpha:1.0];
     if (clickedDarkPurpleColor == nil) {
         clickedDarkPurpleColor = [NSColor colorWithCalibratedRed:0.14
                                                            green:0.13
@@ -199,6 +225,7 @@
 
 - (NSColor *)clickedLightPurpleColor
 {
+    if (self.appearanceVersion == CCIClassicAppearanceMacOS9) return [NSColor colorWithCalibratedRed:0.61 green:0.71 blue:0.89 alpha:1.0];
     if (clickedLightPurpleColor == nil) {
         clickedLightPurpleColor = [NSColor colorWithCalibratedRed:0.70
                                                             green:0.70
@@ -213,18 +240,16 @@
 
 - (NSColor *)folderShadowColor
 {
-    if (clickedLightPurpleColor == nil) {
-        clickedLightPurpleColor = [NSColor colorWithCalibratedRed:0.70
-                                                            green:0.70
-                                                             blue:0.96
-                                                            alpha:1.0];
+    if (self.appearanceVersion == CCIClassicAppearanceMacOS9) {
+        return [NSColor colorWithCalibratedWhite:0.42 alpha:1.0];
     }
-    
-    return clickedLightPurpleColor;
+    if (folderShadowColor == nil) folderShadowColor = [NSColor colorWithCalibratedRed:0.70 green:0.70 blue:0.96 alpha:1.0];
+    return folderShadowColor;
 }
 
 - (NSColor *)folderSelectedHighlightColor
 {
+    if (self.appearanceVersion == CCIClassicAppearanceMacOS9) return [NSColor colorWithCalibratedRed:0.48 green:0.58 blue:0.78 alpha:1.0];
     if (folderSelectedHighlightColor == nil) {
         folderSelectedHighlightColor = [NSColor colorWithCalibratedRed:0.41
                                                                  green:0.41
@@ -237,6 +262,7 @@
 
 - (NSColor *)folderSelectedShadowColor
 {
+    if (self.appearanceVersion == CCIClassicAppearanceMacOS9) return [NSColor colorWithCalibratedRed:0.18 green:0.24 blue:0.42 alpha:1.0];
     if (folderSelectedShadowColor == nil) {
         folderSelectedShadowColor = [NSColor colorWithCalibratedRed:0.10
                                                               green:0.07
@@ -249,6 +275,7 @@
 
 - (NSColor *)folderOpenedBackgroundColor
 {
+    if (self.appearanceVersion == CCIClassicAppearanceMacOS9) return [NSColor colorWithCalibratedRed:0.82 green:0.85 blue:0.92 alpha:1.0];
     if (folderOpenedBackgroundColor == nil) {
         folderOpenedBackgroundColor = [NSColor colorWithCalibratedRed:0.77
                                                                 green:0.77
@@ -261,6 +288,7 @@
 
 - (NSColor *)folderOpenedAndSelectedBackgroundColor
 {
+    if (self.appearanceVersion == CCIClassicAppearanceMacOS9) return [NSColor colorWithCalibratedRed:0.48 green:0.58 blue:0.78 alpha:1.0];
     if (folderOpenedAndSelectedBackgroundColor == nil) {
         folderOpenedAndSelectedBackgroundColor = [NSColor colorWithCalibratedRed:0.19
                                                                            green:0.19
@@ -269,6 +297,22 @@
     }
     
     return folderOpenedAndSelectedBackgroundColor;
+}
+
+- (NSColor *)labelColorForIndex:(NSInteger)labelIndex
+{
+    NSArray<NSColor *> *colors = @[
+        NSColor.clearColor,
+        [NSColor colorWithCalibratedRed:1.0 green:0.72 blue:0.72 alpha:1.0],
+        [NSColor colorWithCalibratedRed:1.0 green:0.82 blue:0.64 alpha:1.0],
+        [NSColor colorWithCalibratedRed:1.0 green:0.94 blue:0.62 alpha:1.0],
+        [NSColor colorWithCalibratedRed:0.73 green:0.92 blue:0.70 alpha:1.0],
+        [NSColor colorWithCalibratedRed:0.67 green:0.86 blue:1.0 alpha:1.0],
+        [NSColor colorWithCalibratedRed:0.82 green:0.74 blue:1.0 alpha:1.0],
+        [NSColor colorWithCalibratedWhite:0.82 alpha:1.0]
+    ];
+    if (labelIndex < 0 || labelIndex >= (NSInteger)colors.count) return NSColor.clearColor;
+    return colors[(NSUInteger)labelIndex];
 }
 
 

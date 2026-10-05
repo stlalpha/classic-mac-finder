@@ -41,6 +41,15 @@
 
 - (void)drawRect:(NSRect)dirtyRect {
     [super drawRect:dirtyRect];
+
+    if ([CCIApplicationStyles instance].appearanceVersion == CCIClassicAppearanceMacOS9) {
+        NSString *imageName = self.applicationIcon ? @"MacOS9Application" : @"MacOS9Document";
+        NSImage *fileImage = [NSImage imageNamed:imageName];
+        if (fileImage != nil) {
+            [fileImage drawInRect:self.bounds fromRect:NSZeroRect operation:NSCompositingOperationSourceOver fraction:1.0 respectFlipped:self.isFlipped hints:nil];
+            return;
+        }
+    }
     
     if (self.selectedState)
     {

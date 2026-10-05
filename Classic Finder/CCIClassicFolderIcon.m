@@ -43,6 +43,14 @@
 
 - (void)drawRect:(NSRect)dirtyRect {
     [super drawRect:dirtyRect];
+
+    if ([CCIApplicationStyles instance].appearanceVersion == CCIClassicAppearanceMacOS9) {
+        NSImage *folderImage = [NSImage imageNamed:@"MacOS9Folder"];
+        if (folderImage != nil) {
+            [folderImage drawInRect:self.bounds fromRect:NSZeroRect operation:NSCompositingOperationSourceOver fraction:1.0 respectFlipped:self.isFlipped hints:nil];
+            return;
+        }
+    }
     
     if (![self selectedState] && [self openFolderState]) {
         [[[CCIApplicationStyles instance] blackColor] setStroke];

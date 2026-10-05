@@ -34,8 +34,10 @@
 @synthesize fileSystemNumber;
 
 @synthesize iconPosition;
+@synthesize labelIndex;
 @synthesize windowDimensions;
 @synthesize windowPosition;
+@synthesize displayStyle;
 
 - (instancetype)init
 {
@@ -48,8 +50,10 @@
         [self setObjectPath:[NSURL fileURLWithPath:@"/"]];
         [self setFileSystemNumber:0];
         [self setIconPosition:NSMakePoint(-1.0, -1.0)];
+        [self setLabelIndex:0];
         [self setWindowDimensions:NSMakeSize(500.0, 300.0)];
         [self setWindowPosition:NSMakePoint(-1.0, -1.0)];
+        [self setDisplayStyle:@"Icon"];
     }
     
     return self;
@@ -83,8 +87,10 @@
     
     if (self) {
         [self setIconPosition:[aDecoder decodePointForKey:@"iconPosition"]];
+        [self setLabelIndex:[aDecoder decodeIntegerForKey:@"labelIndex"]];
         [self setWindowDimensions:[aDecoder decodeSizeForKey:@"windowDimensions"]];
         [self setWindowPosition:[aDecoder decodePointForKey:@"windowPosition"]];
+        [self setDisplayStyle:[aDecoder decodeObjectOfClass:NSString.class forKey:@"displayStyle"] ?: @"Icon"];
     }
     
     return self;
@@ -94,8 +100,10 @@
 {
     [aCoder encodeObject:self.uniqueID forKey:@"uniqueID"];
     [aCoder encodePoint:self.iconPosition forKey:@"iconPosition"];
+    [aCoder encodeInteger:self.labelIndex forKey:@"labelIndex"];
     [aCoder encodeSize:self.windowDimensions forKey:@"windowDimensions"];
     [aCoder encodePoint:self.windowPosition forKey:@"windowPosition"];
+    [aCoder encodeObject:self.displayStyle forKey:@"displayStyle"];
 }
 
 @end

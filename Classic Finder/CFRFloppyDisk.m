@@ -79,6 +79,7 @@
     CFRFileModel *savedModel = [self restoreModelAtPath:[self archivePathForModel:fileModel]
                                                 ofClass:CFRFileModel.class];
     fileModel.iconPosition = savedModel ? savedModel.iconPosition : NSMakePoint(-1.0, -1.0);
+    fileModel.labelIndex = savedModel ? savedModel.labelIndex : 0;
 }
 
 + (BOOL)restoreDirectoryProperties:(CFRDirectoryModel *)directoryModel
@@ -97,14 +98,18 @@
 
     if (savedModel == nil) {
         directoryModel.iconPosition = NSMakePoint(-1.0, -1.0);
+        directoryModel.labelIndex = 0;
         directoryModel.windowDimensions = NSMakeSize(-1.0, -1.0);
         directoryModel.windowPosition = NSMakePoint(-1.0, -1.0);
+        directoryModel.displayStyle = @"Icon";
         return NO;
     }
 
     directoryModel.iconPosition = savedModel.iconPosition;
+    directoryModel.labelIndex = savedModel.labelIndex;
     directoryModel.windowDimensions = savedModel.windowDimensions;
     directoryModel.windowPosition = savedModel.windowPosition;
+    directoryModel.displayStyle = savedModel.displayStyle ?: @"Icon";
     if (restoredLegacyArchive) {
         [self persistDirectoryProperties:directoryModel];
     }
@@ -116,6 +121,7 @@
     CFRAppModel *savedModel = [self restoreModelAtPath:[self archivePathForModel:appDirectoryModel]
                                                 ofClass:CFRAppModel.class];
     appDirectoryModel.iconPosition = savedModel ? savedModel.iconPosition : NSMakePoint(-1.0, -1.0);
+    appDirectoryModel.labelIndex = savedModel ? savedModel.labelIndex : 0;
 }
 
 + (BOOL)persistFileProperties:(CFRFileModel *)fileModel
