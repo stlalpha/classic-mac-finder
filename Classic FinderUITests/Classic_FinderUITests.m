@@ -60,4 +60,43 @@
     XCTAssertTrue(self.application.staticTexts.firstMatch.exists);
 }
 
+- (void)testDoubleClickFolderOpensChildWindowWithZoomRect
+{
+    [self.application launch];
+
+    XCUIElement *itemCount = self.application.staticTexts.firstMatch;
+    XCTAssertTrue([itemCount waitForExistenceWithTimeout:10.0]);
+    XCUIElement *usersFolder = self.application.buttons[@"Users"];
+    XCTAssertTrue([usersFolder waitForExistenceWithTimeout:10.0]);
+    [self.application activate];
+    [[usersFolder coordinateWithNormalizedOffset:CGVectorMake(0.5, 0.5)] doubleTap];
+
+    [NSThread sleepForTimeInterval:0.25];
+    XCTAttachment *folderOpenScreenshot = [XCTAttachment attachmentWithScreenshot:self.application.screenshot];
+    folderOpenScreenshot.name = @"Folder state immediately after double-click";
+    folderOpenScreenshot.lifetime = XCTAttachmentLifetimeKeepAlways;
+    [self addAttachment:folderOpenScreenshot];
+
+    NSPredicate *twoWindowsPredicate = [NSPredicate predicateWithFormat:@"count == 2"];
+    XCTNSPredicateExpectation *twoWindowsExpectation = [[XCTNSPredicateExpectation alloc] initWithPredicate:twoWindowsPredicate
+                                                                                                    object:self.application.windows];
+    XCTAssertEqual([XCTWaiter waitForExpectations:@[twoWindowsExpectation] timeout:5.0], XCTWaiterResultCompleted);
+    XCUIElement *frontWindow = [self.application.windows elementBoundByIndex:0];
+    XCUIElement *parentWindow = [self.application.windows elementBoundByIndex:1];
+    XCTAssertGreaterThanOrEqual(frontWindow.frame.size.width, 200.0, @"A child window must not open at the 31-point icon width.");
+    XCTAssertLessThan(frontWindow.frame.size.width, parentWindow.frame.size.width, @"The Users window should come in front of the wider root window.");
+
+    XCTAttachment *openedFolderScreenshot = [XCTAttachment attachmentWithScreenshot:self.application.screenshot];
+    openedFolderScreenshot.name = @"Users folder opened after ZoomRect";
+    openedFolderScreenshot.lifetime = XCTAttachmentLifetimeKeepAlways;
+    [self addAttachment:openedFolderScreenshot];
+
+    [[frontWindow coordinateWithNormalizedOffset:CGVectorMake(0.03, 0.02)] click];
+    NSPredicate *oneWindowPredicate = [NSPredicate predicateWithFormat:@"count == 1"];
+    XCTNSPredicateExpectation *parentWindowExpectation = [[XCTNSPredicateExpectation alloc] initWithPredicate:oneWindowPredicate
+                                                                                                     object:self.application.windows];
+    XCTAssertEqual([XCTWaiter waitForExpectations:@[parentWindowExpectation] timeout:5.0], XCTWaiterResultCompleted,
+                   @"Closing the Users window should finish its ZoomRect and return to the root window.");
+}
+
 @end

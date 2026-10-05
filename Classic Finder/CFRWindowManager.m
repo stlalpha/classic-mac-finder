@@ -78,12 +78,14 @@
 - (NSRect)initialFrameForDirectory:(CFRDirectoryModel *)directoryModel relativeToWindow:(NSWindow *)parentWindow
 {
     NSSize size = directoryModel.windowDimensions;
-    if (!isfinite(size.width) || size.width <= 0.0) size.width = 500.0;
-    if (!isfinite(size.height) || size.height <= 0.0) size.height = 300.0;
+    BOOL hasUsableSavedSize = isfinite(size.width) && isfinite(size.height) &&
+        size.width >= 200.0 && size.height >= 120.0;
+    if (!hasUsableSavedSize) size = NSMakeSize(500.0, 300.0);
 
     NSPoint position = directoryModel.windowPosition;
     BOOL hasSavedPosition = isfinite(position.x) && isfinite(position.y) &&
         !(position.x == -1.0 && position.y == -1.0);
+    if (!hasUsableSavedSize) hasSavedPosition = NO;
     if (!hasSavedPosition && parentWindow != nil) {
         position = NSMakePoint(NSMinX(parentWindow.frame) + 30.0, NSMaxY(parentWindow.frame) - size.height - 30.0);
     } else if (!hasSavedPosition) {

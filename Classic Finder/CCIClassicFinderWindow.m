@@ -265,18 +265,16 @@ static void CCIAnimateZoomRect(NSRect fromRect, NSRect toRect, NSWindowLevel lev
     innerAnimation.toValue = (__bridge id)innerToPath;
     innerBorder.path = innerToPath;
 
-    [CATransaction begin];
-    [CATransaction setCompletionBlock:^{
+    dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(0.16 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
         [panel orderOut:nil];
         CGPathRelease(outerFromPath);
         CGPathRelease(outerToPath);
         CGPathRelease(innerFromPath);
         CGPathRelease(innerToPath);
         if (completion != nil) completion();
-    }];
+    });
     [outerBorder addAnimation:outerAnimation forKey:@"zoomRect"];
     [innerBorder addAnimation:innerAnimation forKey:@"zoomRect"];
-    [CATransaction commit];
 }
 
 @interface CCIClassicFinderWindow () {
@@ -332,11 +330,9 @@ static void CCIAnimateZoomRect(NSRect fromRect, NSRect toRect, NSWindowLevel lev
 {
     if (!CFRWindowManager.sharedInstance.zoomRectAnimationsEnabled || NSIsEmptyRect(screenRect)) return;
     NSRect finalFrame = self.frame;
-    [self orderOut:nil];
-    CCIAnimateZoomRect(screenRect, finalFrame, self.level, ^{
-        [self makeKeyAndOrderFront:nil];
-        [self setWindowActive];
-    });
+    [self makeKeyAndOrderFront:nil];
+    [self setWindowActive];
+    CCIAnimateZoomRect(screenRect, finalFrame, self.level, nil);
 }
 
 - (instancetype)initWithContentRect:(NSRect)contentRect

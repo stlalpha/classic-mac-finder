@@ -73,6 +73,7 @@
 
         [finderWindow setDelegate:[CFRWindowManager sharedInstance]];
         [finderWindow setWindowController:self];
+        [finderWindow setMinSize:NSMakeSize(200.0, 120.0)];
         [self setWindow:finderWindow];
         
         if (listingError != nil) {

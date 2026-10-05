@@ -54,6 +54,21 @@ static NSString *CCITruncatedIconTitle(NSString *title, NSFont *font, CGFloat ma
 
 @implementation CCIClassicFolder
 
+- (BOOL)isAccessibilityElement
+{
+    return YES;
+}
+
+- (NSString *)accessibilityLabel
+{
+    return self.directoryModel.title ?: self.folderLabel.stringValue ?: @"Folder";
+}
+
+- (NSString *)accessibilityRole
+{
+    return NSAccessibilityButtonRole;
+}
+
 - (instancetype)initWithFrame:(NSRect)frameRect
 {
     self = [super initWithFrame:frameRect];
