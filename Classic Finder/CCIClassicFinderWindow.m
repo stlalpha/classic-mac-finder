@@ -35,6 +35,7 @@
 #import "CCIApplicationStyles.h"
 #import "CFRFloppyDisk.h"
 #import "CFRFileSystemOperations.h"
+#import <QuartzCore/QuartzCore.h>
 
 @class CCIClassicListRow;
 
@@ -224,6 +225,8 @@ static CCIClassicFolder *CCIFolderViewForDirectory(NSView *view, NSURL *director
     return nil;
 }
 
+static const NSTimeInterval CCIZoomRectDuration = 0.12;
+
 - (void)close
 {
     [(CCIClassicFinderWindowController *)self.windowController persistSpatialState];
@@ -252,8 +255,13 @@ static CCIClassicFolder *CCIFolderViewForDirectory(NSView *view, NSURL *director
     }
 
     self.isFinishingZoomClose = YES;
-    [self setFrame:targetRect display:YES animate:YES];
-    [super close];
+    [NSAnimationContext runAnimationGroup:^(NSAnimationContext *context) {
+        context.duration = CCIZoomRectDuration;
+        context.timingFunction = [CAMediaTimingFunction functionWithName:kCAMediaTimingFunctionLinear];
+        [[self animator] setFrame:targetRect display:YES];
+    } completionHandler:^{
+        [self close];
+    }];
 }
 
 - (void)animateOpeningFromScreenRect:(NSRect)screenRect
@@ -263,7 +271,12 @@ static CCIClassicFolder *CCIFolderViewForDirectory(NSView *view, NSURL *director
     [self orderOut:nil];
     [self setFrame:screenRect display:NO];
     [self orderFront:nil];
-    [self setFrame:finalFrame display:YES animate:YES];
+    if (self.isKeyWindow) [self setWindowActive];
+    [NSAnimationContext runAnimationGroup:^(NSAnimationContext *context) {
+        context.duration = CCIZoomRectDuration;
+        context.timingFunction = [CAMediaTimingFunction functionWithName:kCAMediaTimingFunctionLinear];
+        [[self animator] setFrame:finalFrame display:YES];
+    } completionHandler:nil];
 }
 
 - (instancetype)initWithContentRect:(NSRect)contentRect

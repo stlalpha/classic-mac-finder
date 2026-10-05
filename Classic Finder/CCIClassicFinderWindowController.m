@@ -75,8 +75,6 @@
         [finderWindow setWindowController:self];
         [self setWindow:finderWindow];
         
-        [finderWindow makeKeyAndOrderFront:self];
-
         if (listingError != nil) {
             [[NSAlert alertWithError:listingError] beginSheetModalForWindow:finderWindow completionHandler:nil];
         }
@@ -92,9 +90,34 @@
                selector:@selector(windowDidBecomeMain:)
                    name:NSWindowDidBecomeMainNotification
                  object:finderWindow];
+
+        // Register before showing the window: makeKeyAndOrderFront can post the
+        // activation notifications synchronously.
+        [dc addObserver:self
+               selector:@selector(windowDidBecomeKey:)
+                   name:NSWindowDidBecomeKeyNotification
+                 object:finderWindow];
+        [dc addObserver:self
+               selector:@selector(windowDidResignKey:)
+                   name:NSWindowDidResignKeyNotification
+                 object:finderWindow];
+
+        [finderWindow setWindowInactive];
+        [finderWindow makeKeyAndOrderFront:self];
+        if (finderWindow.isKeyWindow) [finderWindow setWindowActive];
     }
     
     return self;
+}
+
+- (void)windowDidBecomeKey:(NSNotification *)notification
+{
+    [(CCIClassicFinderWindow *)self.window setWindowActive];
+}
+
+- (void)windowDidResignKey:(NSNotification *)notification
+{
+    [(CCIClassicFinderWindow *)self.window setWindowInactive];
 }
 
 - (void)windowDidLoad {
