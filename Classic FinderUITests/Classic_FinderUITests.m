@@ -34,12 +34,12 @@
     self.application = [[XCUIApplication alloc] init];
 }
 
-- (void)testLaunchShowsFinderWindow
+- (void)testLaunchDisplaysRootVolumeSummary
 {
     [self.application launch];
 
-    XCUIElement *finderWindow = self.application.windows.firstMatch;
-    XCTAssertTrue([finderWindow waitForExistenceWithTimeout:10.0]);
+    XCUIElement *itemCount = self.application.staticTexts.firstMatch;
+    XCTAssertTrue([itemCount waitForExistenceWithTimeout:10.0]);
 }
 
 @end
