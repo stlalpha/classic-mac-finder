@@ -209,33 +209,17 @@ static CCIClassicFolder *CCIFolderViewForDirectory(NSView *view, NSURL *director
     return nil;
 }
 
-static const NSTimeInterval CCIZoomRectDuration = 0.12;
-
-@interface CCIClassicZoomRectView : NSView
-@end
-
-@implementation CCIClassicZoomRectView
-- (BOOL)isFlipped { return YES; }
-- (void)drawRect:(NSRect)dirtyRect
+static CGPathRef CCIZoomRectPath(NSRect rect)
 {
-    NSRect outerRect = NSInsetRect(self.bounds, 0.5, 0.5);
-    [[NSColor blackColor] setStroke];
-    NSBezierPath *outerBorder = [NSBezierPath bezierPathWithRect:outerRect];
-    outerBorder.lineWidth = 1.0;
-    [outerBorder stroke];
-
-    if (NSWidth(self.bounds) > 4.0 && NSHeight(self.bounds) > 4.0) {
-        [[NSColor colorWithCalibratedWhite:1.0 alpha:0.85] setStroke];
-        NSBezierPath *innerBorder = [NSBezierPath bezierPathWithRect:NSInsetRect(outerRect, 2.0, 2.0)];
-        innerBorder.lineWidth = 1.0;
-        [innerBorder stroke];
-    }
+    return CGPathCreateWithRect(NSRectToCGRect(NSInsetRect(rect, 0.5, 0.5)), NULL);
 }
-@end
 
-static NSPanel *CCIZoomRectPanel(NSRect frame, NSWindowLevel level)
+static void CCIAnimateZoomRect(NSRect fromRect, NSRect toRect, NSWindowLevel level, void (^completion)(void))
 {
-    NSPanel *panel = [[NSPanel alloc] initWithContentRect:frame
+    NSRect overlayFrame = NSUnionRect(fromRect, toRect);
+    NSRect localFromRect = NSOffsetRect(fromRect, -NSMinX(overlayFrame), -NSMinY(overlayFrame));
+    NSRect localToRect = NSOffsetRect(toRect, -NSMinX(overlayFrame), -NSMinY(overlayFrame));
+    NSPanel *panel = [[NSPanel alloc] initWithContentRect:overlayFrame
                                                styleMask:NSWindowStyleMaskBorderless | NSWindowStyleMaskNonactivatingPanel
                                                  backing:NSBackingStoreBuffered
                                                    defer:NO];
@@ -244,8 +228,55 @@ static NSPanel *CCIZoomRectPanel(NSRect frame, NSWindowLevel level)
     panel.hasShadow = NO;
     panel.ignoresMouseEvents = YES;
     panel.level = level;
-    panel.contentView = [[CCIClassicZoomRectView alloc] initWithFrame:NSMakeRect(0, 0, frame.size.width, frame.size.height)];
-    return panel;
+    NSView *contentView = [[NSView alloc] initWithFrame:NSMakeRect(0, 0, overlayFrame.size.width, overlayFrame.size.height)];
+    contentView.wantsLayer = YES;
+    contentView.layer.backgroundColor = NSColor.clearColor.CGColor;
+    panel.contentView = contentView;
+
+    CAShapeLayer *outerBorder = [CAShapeLayer layer];
+    outerBorder.frame = contentView.bounds;
+    outerBorder.fillColor = NSColor.clearColor.CGColor;
+    outerBorder.strokeColor = NSColor.blackColor.CGColor;
+    outerBorder.lineWidth = 1.0;
+    CGPathRef outerFromPath = CCIZoomRectPath(localFromRect);
+    CGPathRef outerToPath = CCIZoomRectPath(localToRect);
+    outerBorder.path = outerFromPath;
+    [contentView.layer addSublayer:outerBorder];
+
+    CAShapeLayer *innerBorder = [CAShapeLayer layer];
+    innerBorder.frame = contentView.bounds;
+    innerBorder.fillColor = NSColor.clearColor.CGColor;
+    innerBorder.strokeColor = [NSColor colorWithCalibratedWhite:1.0 alpha:0.85].CGColor;
+    innerBorder.lineWidth = 1.0;
+    CGPathRef innerFromPath = CCIZoomRectPath(NSInsetRect(localFromRect, 2.0, 2.0));
+    CGPathRef innerToPath = CCIZoomRectPath(NSInsetRect(localToRect, 2.0, 2.0));
+    innerBorder.path = innerFromPath;
+    [contentView.layer addSublayer:innerBorder];
+
+    [panel orderFront:nil];
+    CABasicAnimation *outerAnimation = [CABasicAnimation animationWithKeyPath:@"path"];
+    outerAnimation.fromValue = (__bridge id)outerFromPath;
+    outerAnimation.toValue = (__bridge id)outerToPath;
+    outerAnimation.duration = 0.12;
+    outerAnimation.timingFunction = [CAMediaTimingFunction functionWithName:kCAMediaTimingFunctionLinear];
+    outerBorder.path = outerToPath;
+    CABasicAnimation *innerAnimation = [outerAnimation copy];
+    innerAnimation.fromValue = (__bridge id)innerFromPath;
+    innerAnimation.toValue = (__bridge id)innerToPath;
+    innerBorder.path = innerToPath;
+
+    [CATransaction begin];
+    [CATransaction setCompletionBlock:^{
+        [panel orderOut:nil];
+        CGPathRelease(outerFromPath);
+        CGPathRelease(outerToPath);
+        CGPathRelease(innerFromPath);
+        CGPathRelease(innerToPath);
+        if (completion != nil) completion();
+    }];
+    [outerBorder addAnimation:outerAnimation forKey:@"zoomRect"];
+    [innerBorder addAnimation:innerAnimation forKey:@"zoomRect"];
+    [CATransaction commit];
 }
 
 @interface CCIClassicFinderWindow () {
@@ -292,16 +323,9 @@ static NSPanel *CCIZoomRectPanel(NSRect frame, NSWindowLevel level)
     }
 
     self.isFinishingZoomClose = YES;
-    NSPanel *zoomRect = CCIZoomRectPanel(self.frame, self.level);
-    [zoomRect orderFront:nil];
-    [NSAnimationContext runAnimationGroup:^(NSAnimationContext *context) {
-        context.duration = CCIZoomRectDuration;
-        context.timingFunction = [CAMediaTimingFunction functionWithName:kCAMediaTimingFunctionLinear];
-        [[zoomRect animator] setFrame:targetRect display:YES];
-    } completionHandler:^{
-        [zoomRect orderOut:nil];
+    CCIAnimateZoomRect(self.frame, targetRect, self.level, ^{
         [self close];
-    }];
+    });
 }
 
 - (void)animateOpeningFromScreenRect:(NSRect)screenRect
@@ -309,17 +333,10 @@ static NSPanel *CCIZoomRectPanel(NSRect frame, NSWindowLevel level)
     if (!CFRWindowManager.sharedInstance.zoomRectAnimationsEnabled || NSIsEmptyRect(screenRect)) return;
     NSRect finalFrame = self.frame;
     [self orderOut:nil];
-    NSPanel *zoomRect = CCIZoomRectPanel(screenRect, self.level);
-    [zoomRect orderFront:nil];
-    [NSAnimationContext runAnimationGroup:^(NSAnimationContext *context) {
-        context.duration = CCIZoomRectDuration;
-        context.timingFunction = [CAMediaTimingFunction functionWithName:kCAMediaTimingFunctionLinear];
-        [[zoomRect animator] setFrame:finalFrame display:YES];
-    } completionHandler:^{
-        [zoomRect orderOut:nil];
+    CCIAnimateZoomRect(screenRect, finalFrame, self.level, ^{
         [self makeKeyAndOrderFront:nil];
         [self setWindowActive];
-    }];
+    });
 }
 
 - (instancetype)initWithContentRect:(NSRect)contentRect
