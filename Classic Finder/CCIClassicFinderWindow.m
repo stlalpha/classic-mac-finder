@@ -70,17 +70,17 @@ static NSString *CCIListDisplayTitle(id<CFRFileSystemObject> item)
 - (void)drawSmallIcon
 {
     NSRect iconRect = NSMakeRect(1, 1, 20, 20);
+    BOOL selectionVisible = self.selected && self.window.isMainWindow;
     if ([CCIApplicationStyles instance].appearanceVersion == CCIClassicAppearanceMacOS9) {
         BOOL isFolder = [self.item isKindOfClass:CFRDirectoryModel.class];
-        BOOL isApplication = [self.item.objectPath.pathExtension caseInsensitiveCompare:@"app"] == NSOrderedSame;
-        NSString *imageName = isFolder ? @"MacOS9Folder" : (isApplication ? @"MacOS9Application" : @"MacOS9Document");
-        NSImage *image = isApplication ? [CCIClassicFileIcon macOS9StyledApplicationIconForURL:self.item.objectPath] : [NSImage imageNamed:imageName];
+        NSImage *image = isFolder ? [NSImage imageNamed:@"MacOS9Folder"] : [CCIClassicFileIcon macOS9StyledIconForURL:self.item.objectPath];
+        if (image == nil && !isFolder) image = [NSImage imageNamed:@"MacOS9Document"];
         if (image != nil) {
             [image drawInRect:iconRect fromRect:NSZeroRect operation:NSCompositingOperationSourceOver fraction:1.0 respectFlipped:self.isFlipped hints:nil];
-            if (self.selected) {
+            if (selectionVisible) {
                 [NSGraphicsContext saveGraphicsState];
                 [NSBezierPath clipRect:iconRect];
-                [[NSColor.blackColor colorWithAlphaComponent:0.38] setFill];
+                [[NSColor.blackColor colorWithAlphaComponent:0.28] setFill];
                 NSRectFillUsingOperation(iconRect, NSCompositingOperationSourceAtop);
                 [NSGraphicsContext restoreGraphicsState];
             }
@@ -96,24 +96,30 @@ static NSString *CCIListDisplayTitle(id<CFRFileSystemObject> item)
         NSColor *folderColor = [CCIApplicationStyles instance].appearanceVersion == CCIClassicAppearanceMacOS9
             ? [NSColor colorWithCalibratedRed:0.78 green:0.80 blue:0.92 alpha:1.0]
             : [NSColor colorWithCalibratedRed:0.82 green:0.82 blue:1.0 alpha:1.0];
-        if (self.selected) folderColor = [folderColor blendedColorWithFraction:0.38 ofColor:NSColor.blackColor];
+        if (selectionVisible) folderColor = [folderColor blendedColorWithFraction:0.38 ofColor:NSColor.blackColor];
         [folderColor setFill];
     } else {
         [shape moveToPoint:NSMakePoint(5, 1)]; [shape lineToPoint:NSMakePoint(15, 1)];
         [shape lineToPoint:NSMakePoint(19, 5)]; [shape lineToPoint:NSMakePoint(19, 15)];
         [shape lineToPoint:NSMakePoint(5, 15)]; [shape closePath];
-        [(self.selected ? [NSColor colorWithCalibratedWhite:0.62 alpha:1.0] : NSColor.whiteColor) setFill];
+        [(selectionVisible ? [NSColor colorWithCalibratedWhite:0.62 alpha:1.0] : NSColor.whiteColor) setFill];
     }
     [shape fill]; [NSColor.blackColor setStroke]; [shape stroke];
 }
 
 - (void)drawRect:(NSRect)dirtyRect
 {
+    BOOL selectionVisible = self.selected && self.window.isMainWindow;
     if (self.buttonMode) {
         NSRect buttonRect = NSInsetRect(self.bounds, 1, 1);
         NSGradient *gradient = [[NSGradient alloc] initWithStartingColor:[CCIApplicationStyles instance].appearanceVersion == CCIClassicAppearanceMacOS9 ? [NSColor colorWithCalibratedWhite:0.97 alpha:1.0] : NSColor.whiteColor
                                                              endingColor:[CCIApplicationStyles instance].lightGrayColor];
-        [gradient drawInRect:buttonRect angle:90];
+        if (selectionVisible) {
+            [NSColor.blackColor setFill];
+            NSRectFill(NSInsetRect(buttonRect, 1, 1));
+        } else {
+            [gradient drawInRect:buttonRect angle:90];
+        }
         [[CCIApplicationStyles instance].darkGrayColor setStroke];
         [NSBezierPath strokeRect:buttonRect];
         [[[CCIApplicationStyles instance] whiteColor] setStroke];
@@ -121,8 +127,7 @@ static NSString *CCIListDisplayTitle(id<CFRFileSystemObject> item)
         [highlight moveToPoint:NSMakePoint(2, NSMaxY(buttonRect) - 1)]; [highlight lineToPoint:NSMakePoint(NSMaxX(buttonRect) - 1, NSMaxY(buttonRect) - 1)]; [highlight stroke];
         [self drawSmallIcon];
         NSRect titleRect = NSMakeRect(27, 0, self.bounds.size.width - 30, self.bounds.size.height);
-        NSColor *titleColor = self.selected ? NSColor.whiteColor : NSColor.blackColor;
-        if (self.selected) { [[CCIApplicationStyles instance].darkPurpleColor setFill]; NSRectFill(NSMakeRect(25, 1, self.bounds.size.width - 26, self.bounds.size.height - 2)); }
+        NSColor *titleColor = selectionVisible ? NSColor.whiteColor : NSColor.blackColor;
         NSDictionary *titleAttributes = @{NSFontAttributeName: [[CCIApplicationStyles instance] classicBodyFontOfSize:12], NSForegroundColorAttributeName: titleColor};
         [CCIListDisplayTitle(self.item) drawInRect:NSInsetRect(titleRect, 2, 2) withAttributes:titleAttributes];
         return;
@@ -130,20 +135,20 @@ static NSString *CCIListDisplayTitle(id<CFRFileSystemObject> item)
     CGFloat nameWidth = self.compact ? self.bounds.size.width : floor(self.bounds.size.width * 0.45);
     NSRect nameRect = NSMakeRect(22, 0, nameWidth - 24, self.bounds.size.height);
     NSDictionary *normal = @{NSFontAttributeName: [[CCIApplicationStyles instance] classicBodyFontOfSize:12], NSForegroundColorAttributeName: NSColor.blackColor};
-    if (!self.selected && self.item.labelIndex > 0) {
+    if (selectionVisible) {
+        [NSColor.blackColor setFill];
+        NSRectFill(NSMakeRect(0, 1, self.bounds.size.width, MAX(0, self.bounds.size.height - 2)));
+    }
+    if (!selectionVisible && self.item.labelIndex > 0) {
         [[[CCIApplicationStyles instance] labelColorForIndex:self.item.labelIndex] setFill];
         NSRectFill(nameRect);
     }
     [self drawSmallIcon];
-    NSDictionary *titleAttrs = self.selected ? @{NSFontAttributeName: [[CCIApplicationStyles instance] classicBodyFontOfSize:12], NSForegroundColorAttributeName: NSColor.whiteColor} : normal;
+    NSDictionary *titleAttrs = selectionVisible ? @{NSFontAttributeName: [[CCIApplicationStyles instance] classicBodyFontOfSize:12], NSForegroundColorAttributeName: NSColor.whiteColor} : normal;
     NSString *title = CCIListDisplayTitle(self.item);
     NSSize titleSize = [title sizeWithAttributes:titleAttrs];
     CGFloat titleWidth = MIN(nameRect.size.width, MAX(12.0, ceil(titleSize.width) + 4.0));
     NSRect titleRect = NSMakeRect(nameRect.origin.x, 0, titleWidth, self.bounds.size.height);
-    if (self.selected) {
-        [[[CCIApplicationStyles instance] darkPurpleColor] setFill];
-        NSRectFill(NSInsetRect(titleRect, 0, 1));
-    }
     [title drawInRect:NSInsetRect(titleRect, 2, 2) withAttributes:titleAttrs];
     if (self.compact) return;
 
@@ -692,6 +697,7 @@ static void CCIAnimateZoomRect(NSRect fromRect, NSRect toRect, NSWindowLevel lev
     
     [self.scrollView setWindowIsActive:windowIsActive];
     [self.titlebar setWindowIsActive:windowIsActive];
+    [(CCIClassicFinderWindowController *)self.windowController refreshSelectionAppearance];
 }
 
 - (void)setWindowInactive
@@ -700,6 +706,12 @@ static void CCIAnimateZoomRect(NSRect fromRect, NSRect toRect, NSWindowLevel lev
     
     [self.scrollView setWindowIsActive:windowIsActive];
     [self.titlebar setWindowIsActive:windowIsActive];
+    [(CCIClassicFinderWindowController *)self.windowController refreshSelectionAppearance];
+}
+
+- (void)refreshListSelectionAppearance
+{
+    [self.selectedListRow setNeedsDisplay:YES];
 }
 
 - (BOOL)canBecomeKeyWindow

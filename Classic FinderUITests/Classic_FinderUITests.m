@@ -112,7 +112,7 @@
     [[homeFolder coordinateWithNormalizedOffset:CGVectorMake(0.5, 0.5)] doubleTap];
 
     NSPredicate *nestedFolderPredicate = [NSPredicate predicateWithFormat:@"label == %@", @"110m_cultural"];
-    XCUIElement *nestedFolder = [[self.application descendantsMatchingType:XCUIElementTypeTableRow] matchingPredicate:nestedFolderPredicate].firstMatch;
+    XCUIElement *nestedFolder = [[self.application descendantsMatchingType:XCUIElementTypeAny] matchingPredicate:nestedFolderPredicate].firstMatch;
     XCTAssertTrue([nestedFolder waitForExistenceWithTimeout:10.0]);
     [[nestedFolder coordinateWithNormalizedOffset:CGVectorMake(0.5, 0.5)] doubleTap];
 

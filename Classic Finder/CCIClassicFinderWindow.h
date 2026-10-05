@@ -42,5 +42,6 @@
 - (void)moveIconView:(NSView *)iconView toFrame:(NSRect)frame;
 - (void)animateOpeningFromScreenRect:(NSRect)screenRect;
 - (void)applyLabelIndex:(NSInteger)labelIndex;
+- (void)refreshListSelectionAppearance;
 
 @end

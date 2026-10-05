@@ -25,6 +25,7 @@
 @property (nonatomic, strong) NSImage *applicationImage;
 
 + (NSImage *)macOS9StyledApplicationIconForURL:(NSURL *)url;
++ (NSImage *)macOS9StyledIconForURL:(NSURL *)url;
 
 - (void)selectFile;
 - (void)deselectFile;

@@ -189,6 +189,14 @@
     [self.selectedFiles removeAllObjects];
 }
 
+- (void)refreshSelectionAppearance
+{
+    for (id item in self.selectedFiles) {
+        if ([item respondsToSelector:@selector(selectItem)]) [item selectItem];
+    }
+    [(CCIClassicFinderWindow *)self.window refreshListSelectionAppearance];
+}
+
 - (void)moveIconView:(NSView *)iconView toFrame:(NSRect)frame
 {
     [(CCIClassicFinderWindow *)self.window moveIconView:iconView toFrame:frame];

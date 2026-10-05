@@ -52,9 +52,7 @@ static NSString *CCITruncatedFileIconTitle(NSString *title, NSFont *font, CGFloa
 {
     _fileModel = fileModel;
     self.iconImage.applicationIcon = [fileModel.objectPath.pathExtension caseInsensitiveCompare:@"app"] == NSOrderedSame;
-    self.iconImage.applicationImage = self.iconImage.applicationIcon
-        ? [CCIClassicFileIcon macOS9StyledApplicationIconForURL:fileModel.objectPath]
-        : nil;
+    self.iconImage.applicationImage = [CCIClassicFileIcon macOS9StyledIconForURL:fileModel.objectPath];
     [self.iconImage setNeedsDisplay:YES];
 }
 
@@ -100,7 +98,7 @@ static NSString *CCITruncatedFileIconTitle(NSString *title, NSFont *font, CGFloa
 {
     self.fileLabel.font = [[CCIApplicationStyles instance] classicBodyFontOfSize:10.0];
     [self setFileTitleText:self.fileModel.title ?: @""];
-    if (self.fileSelected) [self reverseFileTitleTextColor];
+    if (self.fileSelected && self.window.isMainWindow) [self reverseFileTitleTextColor];
     else [self normalFileTitleTextColor];
     [self.iconImage setNeedsDisplay:YES];
     [self setNeedsDisplay:YES];
@@ -181,7 +179,7 @@ static NSString *CCITruncatedFileIconTitle(NSString *title, NSFont *font, CGFloa
     paragraphStyle.lineBreakMode = NSLineBreakByTruncatingTail;
     NSDictionary *attributes = @{
         NSForegroundColorAttributeName: [[CCIApplicationStyles instance] whiteColor],
-        NSBackgroundColorAttributeName: [CCIApplicationStyles instance].appearanceVersion == CCIClassicAppearanceMacOS9 ? [[CCIApplicationStyles instance] darkPurpleColor] : [[CCIApplicationStyles instance] blackColor],
+        NSBackgroundColorAttributeName: NSColor.blackColor,
         NSFontAttributeName: self.fileLabel.font,
         NSParagraphStyleAttributeName: paragraphStyle
     };
@@ -192,8 +190,13 @@ static NSString *CCITruncatedFileIconTitle(NSString *title, NSFont *font, CGFloa
 - (void)selectItem
 {
     self.fileSelected = YES;
-    [self reverseFileTitleTextColor];
-    [self.iconImage selectFile];
+    if (self.window.isMainWindow) {
+        [self reverseFileTitleTextColor];
+        [self.iconImage selectFile];
+    } else {
+        [self normalFileTitleTextColor];
+        [self.iconImage deselectFile];
+    }
     [self setNeedsDisplay:YES];
 }
 

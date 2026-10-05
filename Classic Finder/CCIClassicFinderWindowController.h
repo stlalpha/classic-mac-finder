@@ -37,6 +37,7 @@
 - (void)selectedNewFile:(CCIClassicFile *)file;
 - (void)selectedNewFolder:(CCIClassicFolder *)folder;
 - (void)deselectAllItems;
+- (void)refreshSelectionAppearance;
 - (void)moveIconView:(NSView *)iconView toFrame:(NSRect)frame;
 - (void)updateSpringLoadedFolderForDraggedIcon:(NSView *)iconView atScreenPoint:(NSPoint)screenPoint;
 - (void)finishIconDrag:(NSView *)iconView atScreenPoint:(NSPoint)screenPoint;

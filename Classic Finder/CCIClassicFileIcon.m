@@ -94,6 +94,11 @@ static NSImage *CCIRenderMacOS9Icon(NSImage *source)
 
 + (NSImage *)macOS9StyledApplicationIconForURL:(NSURL *)url
 {
+    return [self macOS9StyledIconForURL:url];
+}
+
++ (NSImage *)macOS9StyledIconForURL:(NSURL *)url
+{
     if (url == nil || !url.isFileURL) return nil;
     static NSCache<NSString *, NSImage *> *iconCache;
     static dispatch_once_t onceToken;
@@ -124,10 +129,16 @@ static NSImage *CCIRenderMacOS9Icon(NSImage *source)
     [super drawRect:dirtyRect];
 
     if ([CCIApplicationStyles instance].appearanceVersion == CCIClassicAppearanceMacOS9) {
-        NSImage *fileImage = self.applicationIcon ? self.applicationImage : [NSImage imageNamed:@"MacOS9Document"];
-        if (fileImage == nil && self.applicationIcon) fileImage = [NSImage imageNamed:@"MacOS9Application"];
+        NSImage *fileImage = self.applicationImage ?: [NSImage imageNamed:@"MacOS9Document"];
         if (fileImage != nil) {
             [fileImage drawInRect:self.bounds fromRect:NSZeroRect operation:NSCompositingOperationSourceOver fraction:1.0 respectFlipped:self.isFlipped hints:nil];
+            if (self.selectedState) {
+                [NSGraphicsContext saveGraphicsState];
+                [NSBezierPath clipRect:self.bounds];
+                [[NSColor.blackColor colorWithAlphaComponent:0.28] setFill];
+                NSRectFillUsingOperation(self.bounds, NSCompositingOperationSourceAtop);
+                [NSGraphicsContext restoreGraphicsState];
+            }
             return;
         }
     }

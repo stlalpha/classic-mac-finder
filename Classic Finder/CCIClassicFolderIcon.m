@@ -51,7 +51,7 @@
             if (self.selectedState) {
                 [NSGraphicsContext saveGraphicsState];
                 [NSBezierPath clipRect:self.bounds];
-                [[[CCIApplicationStyles instance].darkPurpleColor colorWithAlphaComponent:0.28] setFill];
+                [[NSColor.blackColor colorWithAlphaComponent:0.28] setFill];
                 NSRectFillUsingOperation(self.bounds, NSCompositingOperationSourceAtop);
                 [NSGraphicsContext restoreGraphicsState];
             }

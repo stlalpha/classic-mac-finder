@@ -119,7 +119,7 @@ static NSString *CCITruncatedIconTitle(NSString *title, NSFont *font, CGFloat ma
 {
     self.folderLabel.font = [[CCIApplicationStyles instance] classicBodyFontOfSize:10.0];
     [self setFolderTitleText:self.directoryModel.title ?: @""];
-    if (self.folderSelected || self.dropTargetHighlighted) [self reverseFolderTitleTextColor];
+    if ((self.folderSelected || self.dropTargetHighlighted) && self.window.isMainWindow) [self reverseFolderTitleTextColor];
     else [self normalFolderTitleTextColor];
     [self.iconImage setNeedsDisplay:YES];
     [self setNeedsDisplay:YES];
@@ -193,7 +193,7 @@ static NSString *CCITruncatedIconTitle(NSString *title, NSFont *font, CGFloat ma
     paragraphStyle.lineBreakMode = NSLineBreakByTruncatingTail;
     NSDictionary *attributes = @{
         NSForegroundColorAttributeName: [[CCIApplicationStyles instance] whiteColor],
-        NSBackgroundColorAttributeName: [CCIApplicationStyles instance].appearanceVersion == CCIClassicAppearanceMacOS9 ? [[CCIApplicationStyles instance] darkPurpleColor] : [[CCIApplicationStyles instance] blackColor],
+        NSBackgroundColorAttributeName: NSColor.blackColor,
         NSFontAttributeName: self.folderLabel.font,
         NSParagraphStyleAttributeName: paragraphStyle
     };
@@ -222,7 +222,7 @@ static NSString *CCITruncatedIconTitle(NSString *title, NSFont *font, CGFloat ma
 
 - (void)updateFolderHighlightAppearance
 {
-    if (self.folderSelected || self.dropTargetHighlighted) {
+    if (self.window.isMainWindow && (self.folderSelected || self.dropTargetHighlighted)) {
         [self reverseFolderTitleTextColor];
         [self.iconImage selectFolder];
     } else {
