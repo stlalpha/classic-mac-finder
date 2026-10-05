@@ -196,6 +196,58 @@ static NSString *CCIListDisplayTitle(id<CFRFileSystemObject> item)
 }
 @end
 
+static CCIClassicFolder *CCIFolderViewForDirectory(NSView *view, NSURL *directoryURL)
+{
+    if ([view isKindOfClass:CCIClassicFolder.class]) {
+        CCIClassicFolder *folder = (CCIClassicFolder *)view;
+        if ([folder.directoryModel.objectPath isEqual:directoryURL]) return folder;
+    }
+    for (NSView *child in view.subviews) {
+        CCIClassicFolder *match = CCIFolderViewForDirectory(child, directoryURL);
+        if (match != nil) return match;
+    }
+    return nil;
+}
+
+static const NSTimeInterval CCIZoomRectDuration = 0.12;
+
+@interface CCIClassicZoomRectView : NSView
+@end
+
+@implementation CCIClassicZoomRectView
+- (BOOL)isFlipped { return YES; }
+- (void)drawRect:(NSRect)dirtyRect
+{
+    NSRect outerRect = NSInsetRect(self.bounds, 0.5, 0.5);
+    [[NSColor blackColor] setStroke];
+    NSBezierPath *outerBorder = [NSBezierPath bezierPathWithRect:outerRect];
+    outerBorder.lineWidth = 1.0;
+    [outerBorder stroke];
+
+    if (NSWidth(self.bounds) > 4.0 && NSHeight(self.bounds) > 4.0) {
+        [[NSColor colorWithCalibratedWhite:1.0 alpha:0.85] setStroke];
+        NSBezierPath *innerBorder = [NSBezierPath bezierPathWithRect:NSInsetRect(outerRect, 2.0, 2.0)];
+        innerBorder.lineWidth = 1.0;
+        [innerBorder stroke];
+    }
+}
+@end
+
+static NSPanel *CCIZoomRectPanel(NSRect frame, NSWindowLevel level)
+{
+    NSPanel *panel = [[NSPanel alloc] initWithContentRect:frame
+                                               styleMask:NSWindowStyleMaskBorderless | NSWindowStyleMaskNonactivatingPanel
+                                                 backing:NSBackingStoreBuffered
+                                                   defer:NO];
+    panel.opaque = NO;
+    panel.backgroundColor = NSColor.clearColor;
+    panel.hasShadow = NO;
+    panel.ignoresMouseEvents = YES;
+    panel.level = level;
+    panel.contentView = [[CCIClassicZoomRectView alloc] initWithFrame:NSMakeRect(0, 0, frame.size.width, frame.size.height)];
+    return panel;
+}
+
 @interface CCIClassicFinderWindow () {
     BOOL windowIsActive;
 }
@@ -211,21 +263,6 @@ static NSString *CCIListDisplayTitle(id<CFRFileSystemObject> item)
 @end
 
 @implementation CCIClassicFinderWindow
-
-static CCIClassicFolder *CCIFolderViewForDirectory(NSView *view, NSURL *directoryURL)
-{
-    if ([view isKindOfClass:CCIClassicFolder.class]) {
-        CCIClassicFolder *folder = (CCIClassicFolder *)view;
-        if ([folder.directoryModel.objectPath isEqual:directoryURL]) return folder;
-    }
-    for (NSView *child in view.subviews) {
-        CCIClassicFolder *match = CCIFolderViewForDirectory(child, directoryURL);
-        if (match != nil) return match;
-    }
-    return nil;
-}
-
-static const NSTimeInterval CCIZoomRectDuration = 0.12;
 
 - (void)close
 {
@@ -255,11 +292,14 @@ static const NSTimeInterval CCIZoomRectDuration = 0.12;
     }
 
     self.isFinishingZoomClose = YES;
+    NSPanel *zoomRect = CCIZoomRectPanel(self.frame, self.level);
+    [zoomRect orderFront:nil];
     [NSAnimationContext runAnimationGroup:^(NSAnimationContext *context) {
         context.duration = CCIZoomRectDuration;
         context.timingFunction = [CAMediaTimingFunction functionWithName:kCAMediaTimingFunctionLinear];
-        [[self animator] setFrame:targetRect display:YES];
+        [[zoomRect animator] setFrame:targetRect display:YES];
     } completionHandler:^{
+        [zoomRect orderOut:nil];
         [self close];
     }];
 }
@@ -269,14 +309,17 @@ static const NSTimeInterval CCIZoomRectDuration = 0.12;
     if (!CFRWindowManager.sharedInstance.zoomRectAnimationsEnabled || NSIsEmptyRect(screenRect)) return;
     NSRect finalFrame = self.frame;
     [self orderOut:nil];
-    [self setFrame:screenRect display:NO];
-    [self orderFront:nil];
-    if (self.isKeyWindow) [self setWindowActive];
+    NSPanel *zoomRect = CCIZoomRectPanel(screenRect, self.level);
+    [zoomRect orderFront:nil];
     [NSAnimationContext runAnimationGroup:^(NSAnimationContext *context) {
         context.duration = CCIZoomRectDuration;
         context.timingFunction = [CAMediaTimingFunction functionWithName:kCAMediaTimingFunctionLinear];
-        [[self animator] setFrame:finalFrame display:YES];
-    } completionHandler:nil];
+        [[zoomRect animator] setFrame:finalFrame display:YES];
+    } completionHandler:^{
+        [zoomRect orderOut:nil];
+        [self makeKeyAndOrderFront:nil];
+        [self setWindowActive];
+    }];
 }
 
 - (instancetype)initWithContentRect:(NSRect)contentRect
