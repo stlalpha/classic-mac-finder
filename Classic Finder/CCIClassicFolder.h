@@ -27,11 +27,13 @@
 @property (nonatomic, strong) CFRDirectoryModel *directoryModel;
 @property (nonatomic, strong) NSTextField *folderLabel;
 @property (nonatomic, readonly) BOOL folderOpened;
+@property (nonatomic, readonly, getter=isDropTargetHighlighted) BOOL dropTargetHighlighted;
 
 - (void)selectItem;
 - (void)deselectItem;
 - (void)setFolderTitleText:(NSString *)title;
 - (void)setOpenItemState;
 - (void)setCloseItemState;
+- (void)setDropTargetHighlighted:(BOOL)highlighted;
 
 @end

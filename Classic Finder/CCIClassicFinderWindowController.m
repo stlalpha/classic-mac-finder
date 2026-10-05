@@ -38,6 +38,10 @@
 @property (nonatomic, strong) NSTimer *springHoverTimer;
 @property (nonatomic, weak) CCIClassicFolder *springHoverFolder;
 
+- (NSView *)iconAtScreenPoint:(NSPoint)screenPoint ignoringIcon:(NSView *)ignoredIcon;
+- (NSView *)iconInView:(NSView *)view atPoint:(NSPoint)point ignoringIcon:(NSView *)ignoredIcon;
+- (CCIClassicFolder *)folderAtScreenPoint:(NSPoint)screenPoint ignoringIcon:(NSView *)ignoredIcon;
+
 @end
 
 @implementation CCIClassicFinderWindowController
@@ -235,35 +239,46 @@
 }
 
 - (NSView *)iconAtScreenPoint:(NSPoint)screenPoint
+                         ignoringIcon:(NSView *)ignoredIcon
 {
     for (NSWindow *window in NSApp.orderedWindows) {
         if (![window isKindOfClass:CCIClassicFinderWindow.class] || !NSPointInRect(screenPoint, window.frame)) continue;
         NSPoint windowPoint = [window convertPointFromScreen:screenPoint];
         NSPoint contentPoint = [window.contentView convertPoint:windowPoint fromView:nil];
-        NSView *hitView = [window.contentView hitTest:contentPoint];
-        while (hitView != nil && ![hitView isKindOfClass:CCIClassicFolder.class] && ![hitView isKindOfClass:CCIClassicFile.class]) hitView = hitView.superview;
-        if ([hitView isKindOfClass:CCIClassicFolder.class] || [hitView isKindOfClass:CCIClassicFile.class]) return hitView;
+        NSView *hitView = [self iconInView:window.contentView atPoint:contentPoint ignoringIcon:ignoredIcon];
+        if (hitView != nil) return hitView;
     }
     return nil;
 }
 
-- (CCIClassicFolder *)folderAtScreenPoint:(NSPoint)screenPoint
+- (NSView *)iconInView:(NSView *)view atPoint:(NSPoint)point ignoringIcon:(NSView *)ignoredIcon
 {
-    NSView *icon = [self iconAtScreenPoint:screenPoint];
+    for (NSView *subview in view.subviews.reverseObjectEnumerator) {
+        if (subview == ignoredIcon || subview.isHiddenOrHasHiddenAncestor) continue;
+        NSPoint pointInSubview = [subview convertPoint:point fromView:view];
+        if (!NSPointInRect(pointInSubview, subview.bounds)) continue;
+        if ([subview isKindOfClass:CCIClassicFolder.class] || [subview isKindOfClass:CCIClassicFile.class]) return subview;
+        NSView *icon = [self iconInView:subview atPoint:pointInSubview ignoringIcon:ignoredIcon];
+        if (icon != nil) return icon;
+    }
+    return nil;
+}
+
+- (CCIClassicFolder *)folderAtScreenPoint:(NSPoint)screenPoint ignoringIcon:(NSView *)ignoredIcon
+{
+    NSView *icon = [self iconAtScreenPoint:screenPoint ignoringIcon:ignoredIcon];
     return [icon isKindOfClass:CCIClassicFolder.class] ? (CCIClassicFolder *)icon : nil;
 }
 
 - (void)updateSpringLoadedFolderForDraggedIcon:(NSView *)iconView atScreenPoint:(NSPoint)screenPoint
 {
-    if (!CFRWindowManager.sharedInstance.springLoadedFoldersEnabled) {
-        [self.springHoverTimer invalidate]; self.springHoverTimer = nil; self.springHoverFolder = nil;
-        return;
-    }
-    CCIClassicFolder *folder = [self folderAtScreenPoint:screenPoint];
-    if (folder == iconView || folder == self.springHoverFolder) return;
+    CCIClassicFolder *folder = [self folderAtScreenPoint:screenPoint ignoringIcon:iconView];
+    if (folder == self.springHoverFolder) return;
     [self.springHoverTimer invalidate]; self.springHoverTimer = nil;
+    [self.springHoverFolder setDropTargetHighlighted:NO];
     self.springHoverFolder = folder;
-    if (folder == nil || folder.folderOpened) return;
+    [folder setDropTargetHighlighted:YES];
+    if (!CFRWindowManager.sharedInstance.springLoadedFoldersEnabled || folder == nil || folder.folderOpened) return;
     self.springHoverTimer = [NSTimer timerWithTimeInterval:CFRWindowManager.sharedInstance.springLoadedFolderDelay
                                                     target:self
                                                   selector:@selector(springHoverDelayElapsed:)
@@ -294,10 +309,11 @@
 
 - (void)finishIconDrag:(NSView *)iconView atScreenPoint:(NSPoint)screenPoint
 {
-    [self.springHoverTimer invalidate]; self.springHoverTimer = nil; self.springHoverFolder = nil;
-    CCIClassicFolder *folder = [self folderAtScreenPoint:screenPoint];
+    [self.springHoverTimer invalidate]; self.springHoverTimer = nil;
+    [self.springHoverFolder setDropTargetHighlighted:NO]; self.springHoverFolder = nil;
+    CCIClassicFolder *folder = [self folderAtScreenPoint:screenPoint ignoringIcon:iconView];
     if (folder == iconView) folder = nil;
-    NSView *targetIcon = [self iconAtScreenPoint:screenPoint];
+    NSView *targetIcon = [self iconAtScreenPoint:screenPoint ignoringIcon:iconView];
     NSURL *destinationURL = folder.directoryModel.objectPath;
     CCIClassicFinderWindowController *destinationController = (CCIClassicFinderWindowController *)folder.window.windowController;
     if (folder.folderOpened) {

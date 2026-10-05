@@ -48,6 +48,13 @@
         NSImage *folderImage = [NSImage imageNamed:@"MacOS9Folder"];
         if (folderImage != nil) {
             [folderImage drawInRect:self.bounds fromRect:NSZeroRect operation:NSCompositingOperationSourceOver fraction:1.0 respectFlipped:self.isFlipped hints:nil];
+            if (self.selectedState) {
+                [NSGraphicsContext saveGraphicsState];
+                [NSBezierPath clipRect:self.bounds];
+                [[[CCIApplicationStyles instance].darkPurpleColor colorWithAlphaComponent:0.28] setFill];
+                NSRectFillUsingOperation(self.bounds, NSCompositingOperationSourceAtop);
+                [NSGraphicsContext restoreGraphicsState];
+            }
             return;
         }
     }

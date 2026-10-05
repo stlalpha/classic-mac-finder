@@ -22,6 +22,10 @@
 #import "../Classic Finder/CFRFileModel.h"
 #import "../Classic Finder/CFRFileSystemOperations.h"
 #import "../Classic Finder/NSString+Hashes.h"
+#import "../Classic Finder/CCIClassicFinderWindowController.h"
+#import "../Classic Finder/CCIClassicFolder.h"
+#import "../Classic Finder/CCIClassicFinderWindow.h"
+#import "../Classic Finder/CFRWindowManager.h"
 
 @interface Classic_FinderTests : XCTestCase
 
@@ -30,6 +34,26 @@
 @end
 
 @implementation Classic_FinderTests
+
+- (CCIClassicFolder *)folderNamed:(NSString *)name inView:(NSView *)view
+{
+    if ([view isKindOfClass:CCIClassicFolder.class] &&
+        [((CCIClassicFolder *)view).directoryModel.title isEqualToString:name]) return (CCIClassicFolder *)view;
+    for (NSView *subview in view.subviews) {
+        CCIClassicFolder *folder = [self folderNamed:name inView:subview];
+        if (folder != nil) return folder;
+    }
+    return nil;
+}
+
+- (NSUInteger)openClassicFinderWindowCount
+{
+    NSUInteger count = 0;
+    for (NSWindow *window in NSApp.windows) {
+        if ([window isKindOfClass:CCIClassicFinderWindow.class]) count++;
+    }
+    return count;
+}
 
 - (void)setUp
 {
@@ -151,6 +175,60 @@
     XCTAssertNil(error);
     XCTAssertEqual(listing.count, 1);
     XCTAssertTrue([listing.firstObject isKindOfClass:CFRFileModel.class]);
+}
+
+- (void)testDraggingOverFolderHighlightsItAndSpringLoadsAfterDelay
+{
+    NSURL *sourceURL = [self.temporaryDirectoryURL URLByAppendingPathComponent:@"Source" isDirectory:YES];
+    NSURL *targetURL = [self.temporaryDirectoryURL URLByAppendingPathComponent:@"Target" isDirectory:YES];
+    NSFileManager *fileManager = NSFileManager.defaultManager;
+    XCTAssertTrue([fileManager createDirectoryAtURL:sourceURL withIntermediateDirectories:NO attributes:nil error:nil]);
+    XCTAssertTrue([fileManager createDirectoryAtURL:targetURL withIntermediateDirectories:NO attributes:nil error:nil]);
+
+    CFRDirectoryModel *root = [[CFRDirectoryModel alloc] init];
+    root.title = self.temporaryDirectoryURL.lastPathComponent;
+    root.objectPath = self.temporaryDirectoryURL;
+    root.windowPosition = NSMakePoint(100.0, 200.0);
+    root.windowDimensions = NSMakeSize(500.0, 300.0);
+    CFRWindowManager *manager = CFRWindowManager.sharedInstance;
+    NSUInteger initialWindowCount = [self openClassicFinderWindowCount];
+    CCIClassicFinderWindowController *controller = [[CCIClassicFinderWindowController alloc] initForDirectory:root];
+    CCIClassicFolder *source = [self folderNamed:@"Source" inView:controller.window.contentView];
+    CCIClassicFolder *target = [self folderNamed:@"Target" inView:controller.window.contentView];
+    XCTAssertNotNil(source);
+    XCTAssertNotNil(target);
+
+    NSRect targetRectInWindow = [target convertRect:target.bounds toView:nil];
+    NSPoint targetPoint = [controller.window convertPointToScreen:NSMakePoint(NSMidX(targetRectInWindow), NSMidY(targetRectInWindow))];
+    [source.superview addSubview:source positioned:NSWindowAbove relativeTo:nil];
+    XCTAssertEqual(source.superview.subviews.lastObject, source, @"The dragged icon should draw in front of sibling icons.");
+    BOOL previousSpringSetting = manager.springLoadedFoldersEnabled;
+    NSTimeInterval previousDelay = manager.springLoadedFolderDelay;
+    manager.springLoadedFoldersEnabled = YES;
+    manager.springLoadedFolderDelay = 0.1;
+
+    [controller updateSpringLoadedFolderForDraggedIcon:source atScreenPoint:targetPoint];
+    XCTAssertTrue(target.isDropTargetHighlighted);
+    XCTAssertEqualObjects(target.accessibilityValue, @"Drop target");
+
+    [controller updateSpringLoadedFolderForDraggedIcon:source atScreenPoint:NSMakePoint(-1000.0, -1000.0)];
+    XCTAssertFalse(target.isDropTargetHighlighted);
+    [[NSRunLoop currentRunLoop] runUntilDate:[NSDate dateWithTimeIntervalSinceNow:0.15]];
+    XCTAssertEqual([self openClassicFinderWindowCount], initialWindowCount + 1, @"Leaving a folder should cancel its spring-load timer.");
+
+    [controller updateSpringLoadedFolderForDraggedIcon:source atScreenPoint:targetPoint];
+    [[NSRunLoop currentRunLoop] runUntilDate:[NSDate dateWithTimeIntervalSinceNow:0.2]];
+    XCTAssertTrue(target.folderOpened);
+    XCTAssertEqual([self openClassicFinderWindowCount], initialWindowCount + 2, @"Hovering on a folder for the configured delay should open it.");
+
+    manager.springLoadedFoldersEnabled = previousSpringSetting;
+    manager.springLoadedFolderDelay = previousDelay;
+    for (NSWindow *window in NSApp.windows.copy) {
+        if ([window.windowController isKindOfClass:CCIClassicFinderWindowController.class]) {
+            CCIClassicFinderWindowController *candidate = (CCIClassicFinderWindowController *)window.windowController;
+            if ([candidate.directoryModel.objectPath.path hasPrefix:self.temporaryDirectoryURL.path]) [window close];
+        }
+    }
 }
 
 @end

@@ -45,10 +45,13 @@ static NSString *CCITruncatedIconTitle(NSString *title, NSFont *font, CGFloat ma
 @property (nonatomic, strong) CCIClassicFolderIcon *iconImage;
 
 @property BOOL folderSelected;
+@property (nonatomic, readwrite, getter=isDropTargetHighlighted) BOOL dropTargetHighlighted;
 @property (nonatomic, readwrite) BOOL folderOpened;
 @property NSPoint dragStartLocation;
 @property NSRect dragStartFrame;
 @property BOOL dragOccurred;
+
+- (void)updateFolderHighlightAppearance;
 
 @end
 
@@ -67,6 +70,11 @@ static NSString *CCITruncatedIconTitle(NSString *title, NSFont *font, CGFloat ma
 - (NSString *)accessibilityRole
 {
     return NSAccessibilityButtonRole;
+}
+
+- (NSString *)accessibilityValue
+{
+    return self.dropTargetHighlighted ? @"Drop target" : nil;
 }
 
 - (instancetype)initWithFrame:(NSRect)frameRect
@@ -111,7 +119,7 @@ static NSString *CCITruncatedIconTitle(NSString *title, NSFont *font, CGFloat ma
 {
     self.folderLabel.font = [[CCIApplicationStyles instance] classicBodyFontOfSize:10.0];
     [self setFolderTitleText:self.directoryModel.title ?: @""];
-    if (self.folderSelected) [self reverseFolderTitleTextColor];
+    if (self.folderSelected || self.dropTargetHighlighted) [self reverseFolderTitleTextColor];
     else [self normalFolderTitleTextColor];
     [self.iconImage setNeedsDisplay:YES];
     [self setNeedsDisplay:YES];
@@ -140,6 +148,7 @@ static NSString *CCITruncatedIconTitle(NSString *title, NSFont *font, CGFloat ma
 
 - (void)mouseDragged:(NSEvent *)event
 {
+    if (!self.dragOccurred) [self.superview addSubview:self positioned:NSWindowAbove relativeTo:nil];
     self.dragOccurred = YES;
     NSPoint point = [self.superview convertPoint:event.locationInWindow fromView:nil];
     NSRect frame = self.dragStartFrame;
@@ -195,16 +204,31 @@ static NSString *CCITruncatedIconTitle(NSString *title, NSFont *font, CGFloat ma
 - (void)selectItem
 {
     [self setFolderSelected:YES];
-    [self reverseFolderTitleTextColor];
-    [[self iconImage] selectFolder];
-    [self setNeedsDisplay:YES];
+    [self updateFolderHighlightAppearance];
 }
 
 - (void)deselectItem
 {
     [self setFolderSelected:NO];
-    [self normalFolderTitleTextColor];
-    [[self iconImage] unselectFolder];
+    [self updateFolderHighlightAppearance];
+}
+
+- (void)setDropTargetHighlighted:(BOOL)highlighted
+{
+    if (_dropTargetHighlighted == highlighted) return;
+    _dropTargetHighlighted = highlighted;
+    [self updateFolderHighlightAppearance];
+}
+
+- (void)updateFolderHighlightAppearance
+{
+    if (self.folderSelected || self.dropTargetHighlighted) {
+        [self reverseFolderTitleTextColor];
+        [self.iconImage selectFolder];
+    } else {
+        [self normalFolderTitleTextColor];
+        [self.iconImage unselectFolder];
+    }
     [self setNeedsDisplay:YES];
 }
 
