@@ -17,7 +17,7 @@ Install as you would any other cocoa app.
 
 ### System Requirements
 
-* macOS 10.11+
+* macOS 11.0+
 * ~250 kb of free disk space
 
 ## Release History

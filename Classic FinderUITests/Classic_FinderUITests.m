@@ -5,51 +5,41 @@
 //  Created by Ben Szymanski on 2/18/17.
 //  Copyright © 2017 Ben Szymanski. All rights reserved.
 //
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
 //
-// This file is part of Classic Finder.
+// http://www.apache.org/licenses/LICENSE-2.0
 //
-// Classic Finder is free software: you can redistribute it and/or modify
-// it under the terms of the GNU General Public License as published by
-// the Free Software Foundation, either version 3 of the License, or
-// (at your option) any later version.
-//
-// Classic Finder is distributed in the hope that it will be useful,
-// but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-// GNU General Public License for more details.
-//
-// You should have received a copy of the GNU General Public License
-// along with Classic Finder.  If not, see <http://www.gnu.org/licenses/>.
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
 
 #import <XCTest/XCTest.h>
 
 @interface Classic_FinderUITests : XCTestCase
 
+@property (nonatomic, strong) XCUIApplication *application;
+
 @end
 
 @implementation Classic_FinderUITests
 
-- (void)setUp {
+- (void)setUp
+{
     [super setUp];
-    
-    // Put setup code here. This method is called before the invocation of each test method in the class.
-    
-    // In UI tests it is usually best to stop immediately when a failure occurs.
     self.continueAfterFailure = NO;
-    // UI tests must launch the application that they test. Doing this in setup will make sure it happens for each test method.
-    [[[XCUIApplication alloc] init] launch];
-    
-    // In UI tests it’s important to set the initial state - such as interface orientation - required for your tests before they run. The setUp method is a good place to do this.
+    self.application = [[XCUIApplication alloc] init];
 }
 
-- (void)tearDown {
-    // Put teardown code here. This method is called after the invocation of each test method in the class.
-    [super tearDown];
-}
+- (void)testLaunchShowsFinderWindow
+{
+    [self.application launch];
 
-- (void)testExample {
-    // Use recording to get started writing UI tests.
-    // Use XCTAssert and related functions to verify your tests produce the correct results.
+    XCUIElement *finderWindow = self.application.windows.firstMatch;
+    XCTAssertTrue([finderWindow waitForExistenceWithTimeout:10.0]);
 }
 
 @end

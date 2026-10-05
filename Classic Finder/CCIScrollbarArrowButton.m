@@ -54,7 +54,7 @@
         [super mouseDown:event];
         
         [self setClicking:YES];
-        [self setNeedsDisplay];
+        self.needsDisplay = YES;
     }
 }
 
@@ -64,7 +64,7 @@
         [super mouseUp:event];
         
         [self setClicking:NO];
-        [self setNeedsDisplay];
+        self.needsDisplay = YES;
         
         // https://stackoverflow.com/questions/498175/custom-nscontrol-target-action-howto#comment4171079_500032
         [NSApp sendAction:[self action]
@@ -79,7 +79,7 @@
         [super mouseExited:event];
         
         self.clicking = NO;
-        [self setNeedsDisplay];
+        self.needsDisplay = YES;
     }
 }
 
@@ -204,7 +204,7 @@
         NSAffineTransform *arrowDirectionRotation = [NSAffineTransform transform];
         [arrowDirectionRotation translateXBy:self.frame.size.width/2.0
                                          yBy:self.frame.size.height / 2.0];
-        [arrowDirectionRotation rotateByDegrees:(90.0 * self.direction)];
+        [arrowDirectionRotation rotateByDegrees:(90.0 * (CGFloat)self.direction)];
         [arrowDirectionRotation translateXBy:-(self.frame.size.width/2.0)
                                          yBy:-(self.frame.size.height / 2.0)];
         [arrowDirectionRotation concat];
@@ -235,7 +235,7 @@
         NSAffineTransform *arrowDirectionRotation = [NSAffineTransform transform];
         [arrowDirectionRotation translateXBy:self.frame.size.width/2.0
                                          yBy:self.frame.size.height / 2.0];
-        [arrowDirectionRotation rotateByDegrees:(90.0 * self.direction)];
+        [arrowDirectionRotation rotateByDegrees:(90.0 * (CGFloat)self.direction)];
         [arrowDirectionRotation translateXBy:-(self.frame.size.width/2.0)
                                          yBy:-(self.frame.size.height / 2.0)];
         [arrowDirectionRotation concat];

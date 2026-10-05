@@ -24,6 +24,7 @@
 #import "CFRDirectoryModel.h"
 #import "CFRFloppyDisk.h"
 #import "CFRFileSystemUtils.h"
+#import <CoreText/CoreText.h>
 
 @interface AppDelegate ()
 
@@ -45,6 +46,11 @@
 
 - (void)applicationDidFinishLaunching:(NSNotification *)aNotification {
     // Insert code here to initialize your application
+
+    NSURL *fontURL = [[NSBundle mainBundle] URLForResource:@"chicagobold" withExtension:@"ttf"];
+    if (fontURL != nil) {
+        CTFontManagerRegisterFontsForURL((__bridge CFURLRef)fontURL, kCTFontManagerScopeProcess, NULL);
+    }
     
     [self openRootVolumeWindow];
 }
@@ -83,7 +89,7 @@
 
 - (void)openRootVolumeWindow
 {
-    NSURL *rootDirectoryPath = [NSURL URLWithString:@"file:///"];
+    NSURL *rootDirectoryPath = [NSURL fileURLWithPath:@"/"];
     
     CFRDirectoryModel *rootDirectoryModel = [[CFRDirectoryModel alloc] init];
     [rootDirectoryModel setObjectPath:rootDirectoryPath];

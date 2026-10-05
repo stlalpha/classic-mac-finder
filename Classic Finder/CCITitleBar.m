@@ -242,8 +242,7 @@
     NSMutableParagraphStyle *titleStyle = [[NSMutableParagraphStyle alloc] init];
     [titleStyle setAlignment:NSTextAlignmentCenter];
     
-    NSFont *chicagoFont = [NSFont fontWithName:@"Chicago"
-                                          size:11.0];
+    NSFont *chicagoFont = [[CCIApplicationStyles instance] classicTitleFontOfSize:11.0];
     
     NSDictionary *fontAttributes = @{NSFontAttributeName: chicagoFont,
                                      NSParagraphStyleAttributeName: titleStyle};

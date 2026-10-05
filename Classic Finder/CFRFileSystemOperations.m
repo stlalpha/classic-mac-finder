@@ -21,376 +21,205 @@
 #import "CFRFileModel.h"
 #import "CFRDirectoryModel.h"
 #import "CFRAppModel.h"
+#import <AppKit/AppKit.h>
 
 @implementation CFRFileSystemOperations
 
-+ (NSArray *)getListingForDirectory:(NSURL *)directory
++ (NSArray *)getListingForDirectory:(NSURL *)directory error:(NSError **)error
 {
     NSMutableArray *fileList = [[NSMutableArray alloc] initWithCapacity:64];
-    NSArray *keys = @[NSURLNameKey, NSURLPathKey, NSURLAddedToDirectoryDateKey, NSURLContentModificationDateKey];
-    NSError *err = nil;
-    
-    NSArray *directoryContents = [[NSFileManager defaultManager] contentsOfDirectoryAtURL:directory
-                                                               includingPropertiesForKeys:keys
-                                                                                  options:(NSDirectoryEnumerationSkipsPackageDescendants |
-                                                                                           NSDirectoryEnumerationSkipsHiddenFiles |
-                                                                                           NSDirectoryEnumerationSkipsSubdirectoryDescendants)
-                                                                                    error:&err];
-    
-    if (err != nil) {
-        NSLog(@"%@", err);
-    } else {
-        for (NSURL *directoryItem in directoryContents) {
-            NSNumber *isDirectory;
-            [directoryItem getResourceValue:&isDirectory
-                                     forKey:NSURLIsDirectoryKey
-                                      error:nil];
-            
-            NSString *title;
-            [directoryItem getResourceValue:&title
-                                     forKey:NSURLNameKey
-                                      error:nil];
-            
-            NSString *path;
-            [directoryItem getResourceValue:&path
-                                     forKey:NSURLPathKey
-                                      error:nil];
-            
-            NSDate *createdDate;
-            [directoryItem getResourceValue:&createdDate
-                                     forKey:NSURLAddedToDirectoryDateKey
-                                      error:nil];
-            
-            NSDate *lastModifiedDate;
-            [directoryItem getResourceValue:&lastModifiedDate
-                                     forKey:NSURLContentModificationDateKey
-                                      error:nil];
-            
-            NSError *err;
-            NSDictionary *fileAttributes = [[NSFileManager defaultManager] attributesOfItemAtPath:directoryItem.path
-                                                                                                   error:&err];
-            
-            if (err != nil) {
-                NSLog(@"%@", err.description);
-            }
-            
-            NSNumber *fileSystemNumber = fileAttributes[NSFileSystemNumber];
-            
-            if ([isDirectory boolValue]) {
-                CFRDirectoryModel *directoryModel = [[CFRDirectoryModel alloc] init];
-                [directoryModel setTitle:title];
-                [directoryModel setCreationDate:createdDate];
-                [directoryModel setLastModified:lastModifiedDate];
-                [directoryModel setObjectPath:directoryItem];
-                [directoryModel setFileSystemNumber:[fileSystemNumber unsignedLongLongValue]];
-                
-                [fileList addObject:directoryModel];
-            } else {
-                CFRFileModel *fileModel = [[CFRFileModel alloc] init];
-                [fileModel setTitle:title];
-                [fileModel setCreationDate:createdDate];
-                [fileModel setLastModified:lastModifiedDate];
-                [fileModel setObjectPath:directoryItem];
-                [fileModel setFileSystemNumber:[fileSystemNumber unsignedLongLongValue]];
-                
-                [fileList addObject:fileModel];
-            }
+    NSArray *keys = @[NSURLNameKey, NSURLIsDirectoryKey, NSURLCreationDateKey, NSURLContentModificationDateKey];
+    NSFileManager *fileManager = [NSFileManager defaultManager];
+    NSArray *directoryContents = [fileManager contentsOfDirectoryAtURL:directory
+                                            includingPropertiesForKeys:keys
+                                                               options:(NSDirectoryEnumerationSkipsPackageDescendants |
+                                                                        NSDirectoryEnumerationSkipsHiddenFiles |
+                                                                        NSDirectoryEnumerationSkipsSubdirectoryDescendants)
+                                                                 error:error];
+
+    if (directoryContents == nil) {
+        return nil;
+    }
+
+    for (NSURL *directoryItem in directoryContents) {
+        NSNumber *isDirectory = nil;
+        NSString *title = nil;
+        NSDate *createdDate = nil;
+        NSDate *lastModifiedDate = nil;
+        [directoryItem getResourceValue:&isDirectory forKey:NSURLIsDirectoryKey error:nil];
+        [directoryItem getResourceValue:&title forKey:NSURLNameKey error:nil];
+        [directoryItem getResourceValue:&createdDate forKey:NSURLCreationDateKey error:nil];
+        [directoryItem getResourceValue:&lastModifiedDate forKey:NSURLContentModificationDateKey error:nil];
+
+        NSDictionary *fileAttributes = [fileManager attributesOfItemAtPath:directoryItem.path error:nil];
+        unsigned long long fileSystemNumber = [fileAttributes[NSFileSystemNumber] unsignedLongLongValue];
+
+        if (isDirectory.boolValue) {
+            CFRDirectoryModel *directoryModel = [[CFRDirectoryModel alloc] init];
+            directoryModel.title = title ?: directoryItem.lastPathComponent;
+            directoryModel.creationDate = createdDate ?: [NSDate date];
+            directoryModel.lastModified = lastModifiedDate ?: [NSDate date];
+            directoryModel.objectPath = directoryItem;
+            directoryModel.fileSystemNumber = (unsigned long)fileSystemNumber;
+            [fileList addObject:directoryModel];
+        } else {
+            CFRFileModel *fileModel = [[CFRFileModel alloc] init];
+            fileModel.title = title ?: directoryItem.lastPathComponent;
+            fileModel.creationDate = createdDate ?: [NSDate date];
+            fileModel.lastModified = lastModifiedDate ?: [NSDate date];
+            fileModel.objectPath = directoryItem;
+            fileModel.fileSystemNumber = (unsigned long)fileSystemNumber;
+            [fileList addObject:fileModel];
         }
     }
-    
+
     return fileList;
 }
 
 + (void)openFileAtURL:(NSURL *)fileURL
 {
-    NSTask *openTask = [[NSTask alloc] init];
-    NSArray *args = @[fileURL.absoluteString];
-    
-    [openTask setLaunchPath:@"/usr/bin/open"];
-    [openTask setArguments:args];
-    
-    [openTask launch];
-}
-
-+ (void)createNewFolderInDirectory:(NSURL *)directory
-                             named:(NSString *)directoryName
-{
-    NSURL *parentDirectoryOfOriginalDirectory = [directory URLByDeletingLastPathComponent];
-    
-    NSString *pathOfNewDirectory = [NSString stringWithFormat:@"%@/%@", parentDirectoryOfOriginalDirectory.absoluteString, directoryName];
-    
-    // Create and run copy/duplicate task
-    NSTask *createDirectoryTask = [[NSTask alloc] init];
-    NSArray *args = @[pathOfNewDirectory];
-    
-    [createDirectoryTask setLaunchPath:@"/bin/mkdir"];
-    [createDirectoryTask setArguments:args];
-    
-    @try {
-        [createDirectoryTask launch];
-    }
-    @catch (NSException *e) {
-        NSLog(@"Error while running create directory operation. (%@ / %@)", e.name, e.reason);
+    if (![NSWorkspace.sharedWorkspace openURL:fileURL]) {
+        NSLog(@"Could not open %@", fileURL.path);
     }
 }
 
-+ (void)printFile:(NSURL *)file
++ (void)createNewFolderInDirectory:(NSURL *)directory named:(NSString *)directoryName
 {
-    
+    NSURL *newDirectory = [directory URLByAppendingPathComponent:directoryName isDirectory:YES];
+    NSError *error = nil;
+    if (![[NSFileManager defaultManager] createDirectoryAtURL:newDirectory
+                                  withIntermediateDirectories:NO
+                                                   attributes:nil
+                                                        error:&error]) {
+        NSLog(@"Could not create folder %@: %@", newDirectory.path, error.localizedDescription);
+    }
+}
+
++ (NSString *)copyNameForURL:(NSURL *)url
+{
+    NSString *extension = url.pathExtension;
+    NSString *baseName = extension.length > 0 ? url.URLByDeletingPathExtension.lastPathComponent : url.lastPathComponent;
+    NSString *copyName = [baseName stringByAppendingString:@" copy"];
+    return extension.length > 0 ? [copyName stringByAppendingPathExtension:extension] : copyName;
+}
+
++ (NSURL *)siblingURLForItem:(NSURL *)item named:(NSString *)name
+{
+    return [[item URLByDeletingLastPathComponent] URLByAppendingPathComponent:name];
+}
+
++ (void)logOperation:(NSString *)operation URL:(NSURL *)url error:(NSError *)error
+{
+    NSLog(@"Could not %@ %@: %@", operation, url.path, error.localizedDescription);
 }
 
 + (void)duplicateFile:(NSURL *)file
 {
-    // Create file name for new file
-    NSString *fileName = [file lastPathComponent];
-    NSString *regexPattern = @"([A-Za-z0-9_ ]+)+";
-    
-    NSError *regexError = nil;
-    NSRegularExpression *fileNameRegex = [[NSRegularExpression alloc] initWithPattern:regexPattern
-                                                                              options:NSRegularExpressionCaseInsensitive
-                                                                                error:&regexError];
-    
-    if (regexError != nil) {
-        NSLog(@"Error while parsing filename. (%@)", regexError.description);
-    } else {
-        NSArray *fileNameCaptureGroups = [fileNameRegex matchesInString:fileName
-                                                                options:0 range:NSMakeRange(0, [fileName length])];
-        if ([fileNameCaptureGroups count] >= 2) {
-            NSString *duplicateFileName = [NSString stringWithFormat:@"%@ copy", fileName];
-            
-            // start at the second array index
-            for (NSUInteger x = 1; x < [fileNameCaptureGroups count]; x += 1) {
-                NSString *fileNameExtra = [fileNameCaptureGroups objectAtIndex: x];
-                duplicateFileName = [NSString stringWithFormat:@"%@.%@", duplicateFileName, fileNameExtra];
-            }
-            
-            NSString *pathOfOriginalFile = [file absoluteString];
-            NSURL *parentDirectoryOfOriginalFile = [file URLByDeletingLastPathComponent];
-            
-            NSString *pathOfNewFile = [NSString stringWithFormat:@"%@/%@", parentDirectoryOfOriginalFile.absoluteString, duplicateFileName];
-            
-            // Create and run copy/duplicate task
-            NSTask *duplicateTask = [[NSTask alloc] init];
-            NSArray *args = @[pathOfOriginalFile, pathOfNewFile];
-            
-            [duplicateTask setLaunchPath:@"/bin/cp"];
-            [duplicateTask setArguments:args];
-            
-            @try {
-                [duplicateTask launch];
-            }
-            @catch (NSException *e) {
-                NSLog(@"Error while running duplicate operation. (%@ / %@)", e.name, e.reason);
-            }
-        } else {
-            NSLog(@"Error while creating duplicate file name - not parsed correctly or missing extension.");
-        }
+    NSURL *destination = [self siblingURLForItem:file named:[self copyNameForURL:file]];
+    NSError *error = nil;
+    if (![[NSFileManager defaultManager] copyItemAtURL:file toURL:destination error:&error]) {
+        [self logOperation:@"duplicate" URL:destination error:error];
     }
 }
 
 + (void)duplicateDirectory:(NSURL *)directory
 {
-    // Create file name for new directory
-    NSString *directoryName = [directory lastPathComponent];
-    NSString *duplicateDirectoryName = [NSString stringWithFormat:@"%@ copy", directoryName];
-    
-    NSString *pathOfOriginalDirectory = [directory absoluteString];
-    NSURL *parentDirectoryOfOriginalDirectory = [directory URLByDeletingLastPathComponent];
-    
-    NSString *pathOfNewDirectory = [NSString stringWithFormat:@"%@/%@", parentDirectoryOfOriginalDirectory.absoluteString, duplicateDirectoryName];
-    
-    // Create and run copy/duplicate task
-    NSTask *duplicateTask = [[NSTask alloc] init];
-    NSArray *args = @[@"-r", pathOfOriginalDirectory, pathOfNewDirectory];
-    
-    [duplicateTask setLaunchPath:@"/bin/cp"];
-    [duplicateTask setArguments:args];
-    
-    @try {
-        [duplicateTask launch];
-    }
-    @catch (NSException *e) {
-        NSLog(@"Error while running duplicate operation. (%@ / %@)", e.name, e.reason);
+    NSURL *destination = [self siblingURLForItem:directory named:[self copyNameForURL:directory]];
+    NSError *error = nil;
+    if (![[NSFileManager defaultManager] copyItemAtURL:directory toURL:destination error:&error]) {
+        [self logOperation:@"duplicate" URL:destination error:error];
     }
 }
 
-+ (void)renameFile:(NSURL *)file
-                to:(NSString *)newName
++ (void)renameFile:(NSURL *)file to:(NSString *)newName
 {
-    NSString *originalFileName = [file lastPathComponent];
-    NSString *regexPattern = @"([A-Za-z0-9_ ]+)+";
-    
-    NSError *regexError = nil;
-    NSRegularExpression *fileNameRegex = [[NSRegularExpression alloc] initWithPattern:regexPattern
-                                                                              options:NSRegularExpressionCaseInsensitive
-                                                                                error:&regexError];
-    
-    if (regexError != nil) {
-        NSLog(@"Error while parsing filename. (%@)", regexError.description);
-    } else {
-        NSArray *fileNameCaptureGroups = [fileNameRegex matchesInString:originalFileName
-                                                                options:0 range:NSMakeRange(0, [originalFileName length])];
-        if ([fileNameCaptureGroups count] >= 2) {
-            NSString *newFileName = [NSString stringWithFormat:@"%@", newName];
-            
-            // start at the second array index
-            for (NSUInteger x = 1; x < [fileNameCaptureGroups count]; x += 1) {
-                NSString *fileNameExtra = [fileNameCaptureGroups objectAtIndex: x];
-                newFileName = [NSString stringWithFormat:@"%@.%@", newFileName, fileNameExtra];
-            }
-            
-            NSString *pathOfOriginalFile = [file absoluteString];
-            NSURL *parentDirectoryOfOriginalFile = [file URLByDeletingLastPathComponent];
-            
-            NSString *pathOfNewFile = [NSString stringWithFormat:@"%@/%@", parentDirectoryOfOriginalFile.absoluteString, newFileName];
-            
-            // Create and run copy/duplicate task
-            NSTask *moveFileTask = [[NSTask alloc] init];
-            NSArray *args = @[pathOfOriginalFile, pathOfNewFile];
-            
-            [moveFileTask setLaunchPath:@"/bin/mv"];
-            [moveFileTask setArguments:args];
-            
-            @try {
-                [moveFileTask launch];
-            }
-            @catch (NSException *e) {
-                NSLog(@"Error while running move file operation. (%@ / %@)", e.name, e.reason);
-            }
-        } else {
-            NSLog(@"Error while creating new file name - not parsed correctly or missing extension.");
-        }
+    NSString *extension = file.pathExtension;
+    NSString *destinationName = (extension.length > 0 && newName.pathExtension.length == 0)
+        ? [newName stringByAppendingPathExtension:extension]
+        : newName;
+    NSURL *destination = [self siblingURLForItem:file named:destinationName];
+    NSError *error = nil;
+    if (![[NSFileManager defaultManager] moveItemAtURL:file toURL:destination error:&error]) {
+        [self logOperation:@"rename" URL:file error:error];
     }
 }
 
-+ (void)renameDirectory:(NSURL *)directory
-                     to:(NSString *)newName
++ (void)renameDirectory:(NSURL *)directory to:(NSString *)newName
 {
-    NSString *pathOfOriginalDirectory = [directory absoluteString];
-    NSURL *parentDirectoryOfOriginalDirectory = [directory URLByDeletingLastPathComponent];
-    
-    NSString *pathOfNewDirectory = [NSString stringWithFormat:@"%@/%@", parentDirectoryOfOriginalDirectory.absoluteString, newName];
-    
-    // Create and run copy/duplicate task
-    NSTask *renameTask = [[NSTask alloc] init];
-    NSArray *args = @[pathOfOriginalDirectory, pathOfNewDirectory];
-    
-    [renameTask setLaunchPath:@"/bin/mv"];
-    [renameTask setArguments:args];
-    
-    @try {
-        [renameTask launch];
+    NSURL *destination = [self siblingURLForItem:directory named:newName];
+    NSError *error = nil;
+    if (![[NSFileManager defaultManager] moveItemAtURL:directory toURL:destination error:&error]) {
+        [self logOperation:@"rename" URL:directory error:error];
     }
-    @catch (NSException *e) {
-        NSLog(@"Error while running rename directory operation. (%@ / %@)", e.name, e.reason);
+}
+
++ (void)moveItemToTrash:(NSURL *)item
+{
+    NSURL *trashedItemURL = nil;
+    NSError *error = nil;
+    if (![[NSFileManager defaultManager] trashItemAtURL:item resultingItemURL:&trashedItemURL error:&error]) {
+        [self logOperation:@"move to Trash" URL:item error:error];
     }
 }
 
 + (void)moveFileToTrash:(NSURL *)file
 {
-    NSString *pathOfFile = [file absoluteString];
-    
-    NSURL *userTrashDirectory = [NSURL URLWithString:@"~/.Tash"];
-    NSString *userTrashDirectoryFullPath = [userTrashDirectory absoluteString];
-    
-    // Create and run copy/duplicate task
-    NSTask *trashFileTask = [[NSTask alloc] init];
-    NSArray *args = @[pathOfFile, userTrashDirectoryFullPath];
-    
-    [trashFileTask setLaunchPath:@"/bin/mv"];
-    [trashFileTask setArguments:args];
-    
-    @try {
-        [trashFileTask launch];
-    }
-    @catch (NSException *e) {
-        NSLog(@"Error while running delete file operation. (%@ / %@)", e.name, e.reason);
-    }
+    [self moveItemToTrash:file];
 }
 
 + (void)moveDirectoryToTrash:(NSURL *)directory
 {
-    NSString *pathOfDirectory = [directory absoluteString];
-    
-    NSURL *userTrashDirectory = [NSURL URLWithString:@"~/.Tash"];
-    NSString *userTrashDirectoryFullPath = [userTrashDirectory absoluteString];
-    
-    // Create and run copy/duplicate task
-    NSTask *trashDirectoryTask = [[NSTask alloc] init];
-    NSArray *args = @[pathOfDirectory, userTrashDirectoryFullPath];
-    
-    [trashDirectoryTask setLaunchPath:@"/bin/mv"];
-    [trashDirectoryTask setArguments:args];
-    
-    @try {
-        [trashDirectoryTask launch];
+    [self moveItemToTrash:directory];
+}
+
++ (NSURL *)destinationURLForItem:(NSURL *)item atLocation:(NSURL *)location
+{
+    BOOL isDirectory = NO;
+    if ([[NSFileManager defaultManager] fileExistsAtPath:location.path isDirectory:&isDirectory] && isDirectory) {
+        return [location URLByAppendingPathComponent:item.lastPathComponent];
     }
-    @catch (NSException *e) {
-        NSLog(@"Error while running delete directory operation. (%@ / %@)", e.name, e.reason);
+    return location;
+}
+
++ (void)moveFile:(NSURL *)file toNewLocation:(NSURL *)location
+{
+    NSURL *destination = [self destinationURLForItem:file atLocation:location];
+    NSError *error = nil;
+    if (![[NSFileManager defaultManager] moveItemAtURL:file toURL:destination error:&error]) {
+        [self logOperation:@"move" URL:file error:error];
     }
 }
 
-+ (void)moveFile:(NSURL *)file
-   toNewLocation:(NSURL *)location
++ (void)moveDirectory:(NSURL *)directory toNewLocation:(NSURL *)location
 {
-    NSString *pathOfFile = [file absoluteString];
-    NSString *pathOfNewLocation = [location absoluteString];
-    
-    // Create and run copy/duplicate task
-    NSTask *moveFileTask = [[NSTask alloc] init];
-    NSArray *args = @[pathOfFile, pathOfNewLocation];
-    
-    [moveFileTask setLaunchPath:@"/bin/mv"];
-    [moveFileTask setArguments:args];
-    
-    @try {
-        [moveFileTask launch];
-    }
-    @catch (NSException *e) {
-        NSLog(@"Error while running move file operation. (%@ / %@)", e.name, e.reason);
+    NSURL *destination = [self destinationURLForItem:directory atLocation:location];
+    NSError *error = nil;
+    if (![[NSFileManager defaultManager] moveItemAtURL:directory toURL:destination error:&error]) {
+        [self logOperation:@"move" URL:directory error:error];
     }
 }
 
-+ (void)moveDirectoryToTrash:(NSURL *)directory
-               toNewLocation:(NSURL *)location
++ (void)printFile:(NSURL *)file
 {
-    NSString *pathOfDirectory = [directory absoluteString];
-    NSString *pathOfNewLocation = [location absoluteString];
-    
-    // Create and run copy/duplicate task
-    NSTask *moveDirectoryTask = [[NSTask alloc] init];
-    NSArray *args = @[pathOfDirectory, pathOfNewLocation];
-    
-    [moveDirectoryTask setLaunchPath:@"/bin/mv"];
-    [moveDirectoryTask setArguments:args];
-    
-    @try {
-        [moveDirectoryTask launch];
-    }
-    @catch (NSException *e) {
-        NSLog(@"Error while running move directory operation. (%@ / %@)", e.name, e.reason);
-    }
+    (void)file;
 }
 
 + (void)createSymLinkOfFile:(NSURL *)file
 {
-    
+    (void)file;
 }
 
 + (void)searchForFilesNamedLike:(NSString *)searchText
 {
-    // use mdfind command
+    (void)searchText;
 }
 
 + (void)emptyTrash
 {
-    
 }
 
 + (void)ejectDisk
 {
-    
 }
-
 
 @end

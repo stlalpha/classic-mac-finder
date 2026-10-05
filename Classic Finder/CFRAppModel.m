@@ -22,6 +22,11 @@
 
 @implementation CFRAppModel
 
++ (BOOL)supportsSecureCoding
+{
+    return YES;
+}
+
 @synthesize title;
 @synthesize creationDate;
 @synthesize lastModified;
@@ -40,9 +45,9 @@
         [self setTitle:@""];
         [self setCreationDate:[NSDate date]];
         [self setLastModified:[NSDate date]];
-        [self setObjectPath:[NSURL URLWithString:@"file:///"]];
+        [self setObjectPath:[NSURL fileURLWithPath:@"/"]];
         [self setIconPosition:NSMakePoint(-1.0, -1.0)];
-        [self setExecutablePath:[NSURL URLWithString:@"file:///"]];
+        [self setExecutablePath:[NSURL fileURLWithPath:@"/"]];
     }
     
     return self;

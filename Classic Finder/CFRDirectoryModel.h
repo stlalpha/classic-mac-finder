@@ -20,9 +20,11 @@
 #import <Foundation/Foundation.h>
 #import "CFRFileSystemObject.h"
 
-@interface CFRDirectoryModel : NSObject <CFRFileSystemObject, NSCoding>
+@interface CFRDirectoryModel : NSObject <CFRFileSystemObject, NSSecureCoding>
 
 @property NSSize windowDimensions;
 @property NSPoint windowPosition;
+
+- (NSString *)legacyUniqueID;
 
 @end

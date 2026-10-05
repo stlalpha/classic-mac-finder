@@ -25,94 +25,112 @@
 
 @implementation CFRFloppyDisk
 
++ (NSString *)archivePathForModel:(id<CFRFileSystemObject>)model
+{
+    return [self archivePathForUniqueID:model.uniqueID];
+}
+
++ (NSString *)archivePathForUniqueID:(NSString *)uniqueID
+{
+    NSString *supportDirectory = [CFRFileSystemUtils applicationSupportDirectory];
+    if (supportDirectory == nil) {
+        return nil;
+    }
+    return [supportDirectory stringByAppendingPathComponent:[NSString stringWithFormat:@"%@.plist", uniqueID]];
+}
+
++ (id)restoreModelAtPath:(NSString *)archivePath ofClass:(Class)modelClass
+{
+    if (archivePath == nil || ![[NSFileManager defaultManager] fileExistsAtPath:archivePath]) {
+        return nil;
+    }
+
+    NSError *error = nil;
+    NSData *data = [NSData dataWithContentsOfFile:archivePath options:0 error:&error];
+    if (data == nil) {
+        NSLog(@"Could not read Finder settings at %@: %@", archivePath, error.localizedDescription);
+        return nil;
+    }
+
+    id model = [NSKeyedUnarchiver unarchivedObjectOfClass:modelClass fromData:data error:&error];
+    if (model == nil) {
+        NSLog(@"Could not restore Finder settings at %@: %@", archivePath, error.localizedDescription);
+    }
+    return model;
+}
+
++ (BOOL)persistModel:(id<CFRFileSystemObject>)model atPath:(NSString *)archivePath
+{
+    if (archivePath == nil) {
+        return NO;
+    }
+
+    NSError *error = nil;
+    NSData *data = [NSKeyedArchiver archivedDataWithRootObject:model requiringSecureCoding:YES error:&error];
+    if (data == nil || ![data writeToFile:archivePath options:NSDataWritingAtomic error:&error]) {
+        NSLog(@"Could not save Finder settings at %@: %@", archivePath, error.localizedDescription);
+        return NO;
+    }
+    return YES;
+}
+
 + (void)restoreFileProperties:(CFRFileModel *)fileModel
 {
-    NSString *applicationSupportDirectory = [CFRFileSystemUtils applicationSupportDirectory];
-    NSString *archivePath = [NSString stringWithFormat:@"%@/%@.plist", applicationSupportDirectory, fileModel.uniqueID];
-
-    BOOL archiveFileExists = [[NSFileManager defaultManager] fileExistsAtPath:archivePath];
-    
-    if (archiveFileExists) {
-        id archivedObject = [NSKeyedUnarchiver unarchiveObjectWithFile:archivePath];
-        CFRFileModel *unarchivedFileModel = (CFRFileModel *)archivedObject;
-        
-        [fileModel setIconPosition:[unarchivedFileModel iconPosition]];
-    } else {
-        [fileModel setIconPosition:NSMakePoint(-1.0, -1.0)];
-    }
+    CFRFileModel *savedModel = [self restoreModelAtPath:[self archivePathForModel:fileModel]
+                                                ofClass:CFRFileModel.class];
+    fileModel.iconPosition = savedModel ? savedModel.iconPosition : NSMakePoint(-1.0, -1.0);
 }
 
 + (BOOL)restoreDirectoryProperties:(CFRDirectoryModel *)directoryModel
 {
-    NSString *applicationSupportDirectory = [CFRFileSystemUtils applicationSupportDirectory];
-    NSString *archivePath = [NSString stringWithFormat:@"%@/%@.plist", applicationSupportDirectory, directoryModel.uniqueID];
-    
-    BOOL archiveFileExists = [[NSFileManager defaultManager] fileExistsAtPath:archivePath];
-    
-    if (archiveFileExists) {
-        id archivedObject = [NSKeyedUnarchiver unarchiveObjectWithFile:archivePath];
-        CFRDirectoryModel *unarchivedDirectoryModel = (CFRDirectoryModel *)archivedObject;
-        
-        [directoryModel setIconPosition:[unarchivedDirectoryModel iconPosition]];
-        [directoryModel setWindowDimensions:[unarchivedDirectoryModel windowDimensions]];
-        [directoryModel setWindowPosition:[unarchivedDirectoryModel windowPosition]];
-    } else {
-        [directoryModel setIconPosition:NSMakePoint(-1.0, -1.0)];
-        [directoryModel setWindowDimensions:NSMakeSize(-1.0, -1.0)];
-        [directoryModel setWindowPosition:NSMakePoint(-1.0, -1.0)];
+    NSString *archivePath = [self archivePathForModel:directoryModel];
+    CFRDirectoryModel *savedModel = [self restoreModelAtPath:archivePath ofClass:CFRDirectoryModel.class];
+    BOOL restoredLegacyArchive = NO;
+
+    if (savedModel == nil) {
+        NSString *legacyArchivePath = [self archivePathForUniqueID:directoryModel.legacyUniqueID];
+        if (![legacyArchivePath isEqualToString:archivePath]) {
+            savedModel = [self restoreModelAtPath:legacyArchivePath ofClass:CFRDirectoryModel.class];
+            restoredLegacyArchive = (savedModel != nil);
+        }
     }
-    
-    return archiveFileExists;
+
+    if (savedModel == nil) {
+        directoryModel.iconPosition = NSMakePoint(-1.0, -1.0);
+        directoryModel.windowDimensions = NSMakeSize(-1.0, -1.0);
+        directoryModel.windowPosition = NSMakePoint(-1.0, -1.0);
+        return NO;
+    }
+
+    directoryModel.iconPosition = savedModel.iconPosition;
+    directoryModel.windowDimensions = savedModel.windowDimensions;
+    directoryModel.windowPosition = savedModel.windowPosition;
+    if (restoredLegacyArchive) {
+        [self persistDirectoryProperties:directoryModel];
+    }
+    return YES;
 }
 
 + (void)restoreAppDirectoryProperties:(CFRAppModel *)appDirectoryModel
 {
-    NSString *applicationSupportDirectory = [CFRFileSystemUtils applicationSupportDirectory];
-    NSString *archivePath = [NSString stringWithFormat:@"%@/%@.plist", applicationSupportDirectory, appDirectoryModel.uniqueID];
-    
-    BOOL archiveFileExists = [[NSFileManager defaultManager] fileExistsAtPath:archivePath];
-    
-    if (archiveFileExists) {
-        id archivedObject = [NSKeyedUnarchiver unarchiveObjectWithFile:archivePath];
-        CFRAppModel *unarchivedAppModel = (CFRAppModel *)archivedObject;
-        
-        [appDirectoryModel setIconPosition:[unarchivedAppModel iconPosition]];
-    } else {
-        [appDirectoryModel setIconPosition:NSMakePoint(-1.0, -1.0)];
-    }
+    CFRAppModel *savedModel = [self restoreModelAtPath:[self archivePathForModel:appDirectoryModel]
+                                                ofClass:CFRAppModel.class];
+    appDirectoryModel.iconPosition = savedModel ? savedModel.iconPosition : NSMakePoint(-1.0, -1.0);
 }
 
-+ (BOOL)persistFileProperties:(CFRFileModel *)fileModel;
++ (BOOL)persistFileProperties:(CFRFileModel *)fileModel
 {
-    NSString *applicationSupportDirectory = [CFRFileSystemUtils applicationSupportDirectory];
-    NSString *archivePath = [NSString stringWithFormat:@"%@/%@.plist", applicationSupportDirectory, fileModel.uniqueID];
-    
-    BOOL result = [NSKeyedArchiver archiveRootObject:fileModel
-                                              toFile:archivePath];
-    
-    return result;
+    return [self persistModel:fileModel atPath:[self archivePathForModel:fileModel]];
 }
 
 + (BOOL)persistDirectoryProperties:(CFRDirectoryModel *)directoryModel
 {
-    NSString *applicationSupportDirectory = [CFRFileSystemUtils applicationSupportDirectory];
-    NSString *archivePath = [NSString stringWithFormat:@"%@/%@.plist", applicationSupportDirectory, directoryModel.uniqueID];
-    
-    BOOL result = [NSKeyedArchiver archiveRootObject:directoryModel
-                                              toFile:archivePath];
-    
-    return result;
+    return [self persistModel:directoryModel atPath:[self archivePathForModel:directoryModel]];
 }
 
 + (BOOL)persistAppDirectoryProperties:(CFRAppModel *)appDirectoryModel
 {
-    NSString *applicationSupportDirectory = [CFRFileSystemUtils applicationSupportDirectory];
-    NSString *archivePath = [NSString stringWithFormat:@"%@/%@.plist", applicationSupportDirectory, appDirectoryModel.uniqueID];
-    
-    BOOL result = [NSKeyedArchiver archiveRootObject:appDirectoryModel
-                                              toFile:archivePath];
-    
-    return result;
+    return [self persistModel:appDirectoryModel atPath:[self archivePathForModel:appDirectoryModel]];
 }
 
 @end

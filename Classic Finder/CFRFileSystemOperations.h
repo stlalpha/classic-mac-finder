@@ -21,12 +21,19 @@
 
 @interface CFRFileSystemOperations : NSObject
 
-+ (NSArray *)getListingForDirectory:(NSURL *)directory;
++ (NSArray *)getListingForDirectory:(NSURL *)directory error:(NSError **)error;
 + (void)openFileAtURL:(NSURL *)fileURL;
 + (void)createNewFolderInDirectory:(NSURL *)directory
                              named:(NSString *)folderName;
 + (void)printFile:(NSURL *)file;
 + (void)duplicateFile:(NSURL *)file;
++ (void)duplicateDirectory:(NSURL *)directory;
++ (void)renameFile:(NSURL *)file to:(NSString *)newName;
++ (void)renameDirectory:(NSURL *)directory to:(NSString *)newName;
++ (void)moveFileToTrash:(NSURL *)file;
++ (void)moveDirectoryToTrash:(NSURL *)directory;
++ (void)moveFile:(NSURL *)file toNewLocation:(NSURL *)location;
++ (void)moveDirectory:(NSURL *)directory toNewLocation:(NSURL *)location;
 + (void)createSymLinkOfFile:(NSURL *)file;
 + (void)searchForFilesNamedLike:(NSString *)searchText;
 + (void)emptyTrash;

@@ -20,6 +20,6 @@
 #import <Foundation/Foundation.h>
 #import "CFRFileSystemObject.h"
 
-@interface CFRFileModel : NSObject <CFRFileSystemObject, NSCoding>
+@interface CFRFileModel : NSObject <CFRFileSystemObject, NSSecureCoding>
 
 @end

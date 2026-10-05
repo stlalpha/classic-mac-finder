@@ -48,7 +48,9 @@
         
         self.directoryModel = directoryModel;
         self.windowDirectoryName = directoryName;
-        self.fileList = [CFRFileSystemOperations getListingForDirectory:self.directoryModel.objectPath];
+        NSError *listingError = nil;
+        self.fileList = [CFRFileSystemOperations getListingForDirectory:self.directoryModel.objectPath
+                                                                  error:&listingError];
         self.selectedFiles = [[NSMutableArray alloc] initWithCapacity:50];
         
         NSUInteger windowStyleMask = NSWindowStyleMaskBorderless;
@@ -71,6 +73,10 @@
         [self setWindow:finderWindow];
         
         [finderWindow makeKeyAndOrderFront:self];
+
+        if (listingError != nil) {
+            [[NSAlert alertWithError:listingError] beginSheetModalForWindow:finderWindow completionHandler:nil];
+        }
         
         NSNotificationCenter *dc = [NSNotificationCenter defaultCenter];
         

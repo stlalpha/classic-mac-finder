@@ -22,6 +22,11 @@
 
 @implementation CFRDirectoryModel
 
++ (BOOL)supportsSecureCoding
+{
+    return YES;
+}
+
 @synthesize title;
 @synthesize creationDate;
 @synthesize lastModified;
@@ -40,7 +45,7 @@
         [self setTitle:@""];
         [self setCreationDate:[NSDate date]];
         [self setLastModified:[NSDate date]];
-        [self setObjectPath:[NSURL URLWithString:@"file:///"]];
+        [self setObjectPath:[NSURL fileURLWithPath:@"/"]];
         [self setFileSystemNumber:0];
         [self setIconPosition:NSMakePoint(-1.0, -1.0)];
         [self setWindowDimensions:NSMakeSize(500.0, 300.0)];
@@ -52,10 +57,17 @@
 
 - (NSString *)uniqueID
 {
-    NSString *unhashedID = [NSString stringWithFormat:@"%lu%@", fileSystemNumber, title];
+    NSString *directoryPath = self.objectPath.URLByStandardizingPath.path ?: self.title;
+    NSString *unhashedID = [NSString stringWithFormat:@"%lu:%@", fileSystemNumber, directoryPath];
     NSString *hashedID = [unhashedID sha1];
     
     return hashedID;
+}
+
+- (NSString *)legacyUniqueID
+{
+    NSString *unhashedID = [NSString stringWithFormat:@"%lu%@", fileSystemNumber, title];
+    return [unhashedID sha1];
 }
 
 - (NSString *)objectType

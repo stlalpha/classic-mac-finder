@@ -43,6 +43,18 @@
 
 @implementation CCIApplicationStyles
 
+- (NSFont *)classicBodyFontOfSize:(CGFloat)size
+{
+    return [NSFont fontWithName:@"Geneva" size:size] ?: [NSFont systemFontOfSize:size];
+}
+
+- (NSFont *)classicTitleFontOfSize:(CGFloat)size
+{
+    return [NSFont fontWithName:@"Chicago" size:size]
+        ?: [NSFont fontWithName:@"ChicagoBold" size:size]
+        ?: [NSFont boldSystemFontOfSize:size];
+}
+
 #pragma mark - INITIALIZATION
 
 + (instancetype)instance

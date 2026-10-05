@@ -20,7 +20,7 @@
 #import <Foundation/Foundation.h>
 #import "CFRFileSystemObject.h"
 
-@interface CFRAppModel : NSObject <CFRFileSystemObject, NSCoding>
+@interface CFRAppModel : NSObject <CFRFileSystemObject, NSSecureCoding>
 
 @property NSURL *executablePath;
 

@@ -45,4 +45,7 @@
 - (NSColor *)folderOpenedBackgroundColor;
 - (NSColor *)folderOpenedAndSelectedBackgroundColor;
 
+- (NSFont *)classicBodyFontOfSize:(CGFloat)size;
+- (NSFont *)classicTitleFontOfSize:(CGFloat)size;
+
 @end
