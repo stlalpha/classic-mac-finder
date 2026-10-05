@@ -74,7 +74,9 @@ static NSString *CCITruncatedIconTitle(NSString *title, NSFont *font, CGFloat ma
 
 - (NSString *)accessibilityValue
 {
-    return self.dropTargetHighlighted ? @"Drop target" : nil;
+    if (self.dropTargetHighlighted && self.folderSelected) return @"Selected, Drop target";
+    if (self.dropTargetHighlighted) return @"Drop target";
+    return self.folderSelected ? @"Selected" : nil;
 }
 
 - (instancetype)initWithFrame:(NSRect)frameRect

@@ -66,6 +66,27 @@
     XCTAssertTrue(self.application.staticTexts.firstMatch.exists);
 }
 
+- (void)testArrowKeyMovesSelectionToPreviousListItem
+{
+    [self.application launch];
+
+    XCUIElement *viewMenu = self.application.menuBars.menuBarItems[@"View"];
+    XCTAssertTrue([viewMenu waitForExistenceWithTimeout:5.0]);
+    [viewMenu click];
+    [self.application.menuItems[@"by Name"] click];
+
+    XCUIElement *usersFolder = [self itemWithLabel:@"Users"];
+    XCTAssertTrue([usersFolder waitForExistenceWithTimeout:5.0]);
+    [usersFolder click];
+    [self.application typeKey:XCUIKeyboardKeyUpArrow modifierFlags:0];
+
+    XCUIElement *systemFolder = [self itemWithLabel:@"System"];
+    XCTAssertTrue([systemFolder waitForExistenceWithTimeout:5.0]);
+    NSPredicate *selectedPredicate = [NSPredicate predicateWithFormat:@"value == %@", @"Selected"];
+    XCTNSPredicateExpectation *selectionExpectation = [[XCTNSPredicateExpectation alloc] initWithPredicate:selectedPredicate object:systemFolder];
+    XCTAssertEqual([XCTWaiter waitForExpectations:@[selectionExpectation] timeout:5.0], XCTWaiterResultCompleted);
+}
+
 - (void)testDoubleClickFolderOpensChildWindowWithZoomRect
 {
     [self.application launch];

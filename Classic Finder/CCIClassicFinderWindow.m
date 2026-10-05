@@ -25,6 +25,7 @@
 #import "CCIScrollContentView.h"
 #import "CCIClassicFolder.h"
 #import "CCIClassicFile.h"
+#import "CCIFinderIconProtocol.h"
 #import "CCIClassicFileIcon.h"
 #import "CFRWindowManager.h"
 #import "CFRDirectoryModel.h"
@@ -66,6 +67,7 @@ static NSString *CCIListDisplayTitle(id<CFRFileSystemObject> item)
 - (BOOL)isAccessibilityElement { return YES; }
 - (NSString *)accessibilityLabel { return CCIListDisplayTitle(self.item); }
 - (NSString *)accessibilityRole { return self.buttonMode ? NSAccessibilityButtonRole : NSAccessibilityRowRole; }
+- (NSString *)accessibilityValue { return self.selected ? @"Selected" : nil; }
 
 - (void)drawSmallIcon
 {
@@ -799,12 +801,92 @@ static void CCIAnimateZoomRect(NSRect fromRect, NSRect toRect, NSWindowLevel lev
 
 - (void)keyDown:(NSEvent *)event
 {
-    NSLog(@"key down = %@", event.characters);
+    NSUInteger keyCode = event.keyCode;
+    BOOL left = keyCode == 123;
+    BOOL right = keyCode == 124;
+    BOOL down = keyCode == 125;
+    BOOL up = keyCode == 126;
+    if (!left && !right && !down && !up) {
+        [super keyDown:event];
+        return;
+    }
+
+    CCIClassicFinderWindowController *controller = (CCIClassicFinderWindowController *)self.windowController;
+    CCIScrollContentView *content = self.scrollView.contentView;
+    if ([self.displayStyle isEqualToString:@"Icon"]) {
+        NSArray<NSView *> *icons = [content.subviews filteredArrayUsingPredicate:[NSPredicate predicateWithBlock:^BOOL(NSView *view, NSDictionary *bindings) {
+            return [view conformsToProtocol:@protocol(CCIFinderIconProtocol)];
+        }]];
+        if (icons.count == 0) return;
+
+        NSView *selectedIcon = controller.selectedIconViews.lastObject;
+        NSView *nextIcon = nil;
+        CGFloat bestScore = CGFLOAT_MAX;
+        NSPoint selectedCenter = selectedIcon ? NSMakePoint(NSMidX(selectedIcon.frame), NSMidY(selectedIcon.frame)) : NSZeroPoint;
+        for (NSView *candidate in icons) {
+            if (candidate == selectedIcon) continue;
+            NSPoint candidateCenter = NSMakePoint(NSMidX(candidate.frame), NSMidY(candidate.frame));
+            if (selectedIcon == nil) {
+                if (nextIcon == nil || candidateCenter.y < NSMidY(nextIcon.frame) ||
+                    (candidateCenter.y == NSMidY(nextIcon.frame) && candidateCenter.x < NSMidX(nextIcon.frame))) nextIcon = candidate;
+                continue;
+            }
+
+            CGFloat dx = candidateCenter.x - selectedCenter.x;
+            CGFloat dy = candidateCenter.y - selectedCenter.y;
+            CGFloat primary = (left || right) ? fabs(dx) : fabs(dy);
+            CGFloat orthogonal = (left || right) ? fabs(dy) : fabs(dx);
+            BOOL isInDirection = left ? dx < -1.0 : right ? dx > 1.0 : up ? dy < -1.0 : dy > 1.0;
+            CGFloat score = primary + orthogonal * 2.0;
+            if (isInDirection && score < bestScore) {
+                bestScore = score;
+                nextIcon = candidate;
+            }
+        }
+        if (nextIcon != nil) [controller selectItemView:nextIcon modifiers:0];
+        return;
+    }
+
+    NSArray<CCIClassicListRow *> *rows = [self visibleListRows];
+    if (rows.count == 0) return;
+    if ((left || right) && ![self.displayStyle isEqualToString:@"Buttons"]) return;
+
+    CCIClassicListRow *nextRow = nil;
+    CCIClassicListRow *currentRow = self.selectedListRow;
+    if ([self.displayStyle isEqualToString:@"Buttons"]) {
+        NSPoint currentCenter = currentRow ? NSMakePoint(NSMidX(currentRow.frame), NSMidY(currentRow.frame)) : NSZeroPoint;
+        CGFloat bestScore = CGFLOAT_MAX;
+        for (CCIClassicListRow *candidate in rows) {
+            if (candidate == currentRow) continue;
+            NSPoint candidateCenter = NSMakePoint(NSMidX(candidate.frame), NSMidY(candidate.frame));
+            if (currentRow == nil) {
+                if (nextRow == nil || candidateCenter.y < NSMidY(nextRow.frame) ||
+                    (candidateCenter.y == NSMidY(nextRow.frame) && candidateCenter.x < NSMidX(nextRow.frame))) nextRow = candidate;
+                continue;
+            }
+            CGFloat dx = candidateCenter.x - currentCenter.x;
+            CGFloat dy = candidateCenter.y - currentCenter.y;
+            CGFloat primary = (left || right) ? fabs(dx) : fabs(dy);
+            CGFloat orthogonal = (left || right) ? fabs(dy) : fabs(dx);
+            BOOL isInDirection = left ? dx < -1.0 : right ? dx > 1.0 : up ? dy < -1.0 : dy > 1.0;
+            CGFloat score = primary + orthogonal * 2.0;
+            if (isInDirection && score < bestScore) {
+                bestScore = score;
+                nextRow = candidate;
+            }
+        }
+    } else {
+        NSUInteger index = [rows indexOfObjectIdenticalTo:currentRow];
+        if (index == NSNotFound) index = down ? NSNotFound : rows.count;
+        if (down && index + 1 < rows.count) nextRow = rows[index + 1];
+        else if (up && index > 0 && index <= rows.count) nextRow = rows[index - 1];
+    }
+    if (nextRow != nil) [self selectListRow:nextRow modifiers:0];
 }
 
 - (void)keyUp:(NSEvent *)event
 {
-    NSLog(@"key up = %@", event.characters);
+    [super keyUp:event];
 }
 
 @end

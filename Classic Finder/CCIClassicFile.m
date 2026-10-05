@@ -48,6 +48,11 @@ static NSString *CCITruncatedFileIconTitle(NSString *title, NSFont *font, CGFloa
 
 @implementation CCIClassicFile
 
+- (BOOL)isAccessibilityElement { return YES; }
+- (NSString *)accessibilityLabel { return self.fileModel.title ?: self.fileLabel.stringValue ?: @"File"; }
+- (NSString *)accessibilityRole { return NSAccessibilityButtonRole; }
+- (NSString *)accessibilityValue { return self.fileSelected ? @"Selected" : nil; }
+
 - (void)setFileModel:(id<CFRFileSystemObject>)fileModel
 {
     _fileModel = fileModel;
