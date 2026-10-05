@@ -62,6 +62,8 @@
         self.folderLabel.drawsBackground = YES;
         self.folderLabel.maximumNumberOfLines = 5;
         self.folderLabel.usesSingleLineMode = NO;
+
+        [self normalFolderTitleTextColor];
         
         [self addSubview:self.folderLabel];
     }

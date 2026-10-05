@@ -66,6 +66,8 @@ typedef NS_ENUM(NSUInteger, FileSizeMetrics) {
         self.itemCountTextField.stringValue = @"4 items";
         self.itemCountTextField.bordered = NO;
         self.itemCountTextField.selectable = NO;
+        self.itemCountTextField.drawsBackground = NO;
+        self.itemCountTextField.textColor = [[CCIApplicationStyles instance] blackColor];
         self.itemCountTextField.font = [[CCIApplicationStyles instance] classicBodyFontOfSize:10.0];
         
         [self addSubview:self.itemCountTextField];
@@ -77,6 +79,8 @@ typedef NS_ENUM(NSUInteger, FileSizeMetrics) {
         self.usedSpaceTextField.alignment = NSTextAlignmentCenter;
         self.usedSpaceTextField.bordered = NO;
         self.usedSpaceTextField.selectable = NO;
+        self.usedSpaceTextField.drawsBackground = NO;
+        self.usedSpaceTextField.textColor = [[CCIApplicationStyles instance] blackColor];
         self.usedSpaceTextField.font = [[CCIApplicationStyles instance] classicBodyFontOfSize:10.0];
         
         [self addSubview:self.usedSpaceTextField];
@@ -88,6 +92,8 @@ typedef NS_ENUM(NSUInteger, FileSizeMetrics) {
         self.availableSpaceTextField.alignment = NSTextAlignmentRight;
         self.availableSpaceTextField.bordered = NO;
         self.availableSpaceTextField.selectable = NO;
+        self.availableSpaceTextField.drawsBackground = NO;
+        self.availableSpaceTextField.textColor = [[CCIApplicationStyles instance] blackColor];
         self.availableSpaceTextField.font = [[CCIApplicationStyles instance] classicBodyFontOfSize:10.0];
         
         [self addSubview:self.availableSpaceTextField];
