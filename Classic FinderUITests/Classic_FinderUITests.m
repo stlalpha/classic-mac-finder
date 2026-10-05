@@ -46,7 +46,7 @@
 {
     [self.application launch];
 
-    XCUIElement *viewMenu = self.application.menuBars.menuItems[@"View"];
+    XCUIElement *viewMenu = self.application.menuBars.menuBarItems[@"View"];
     XCTAssertTrue([viewMenu waitForExistenceWithTimeout:5.0]);
     [viewMenu click];
     [self.application.menuItems[@"by Name"] click];
