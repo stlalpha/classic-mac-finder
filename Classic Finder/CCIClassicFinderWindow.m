@@ -226,6 +226,7 @@ static CCIClassicFolder *CCIFolderViewForDirectory(NSView *view, NSURL *director
 
 - (void)close
 {
+    [(CCIClassicFinderWindowController *)self.windowController persistSpatialState];
     if (self.isFinishingZoomClose || !CFRWindowManager.sharedInstance.zoomRectAnimationsEnabled) {
         [super close];
         return;

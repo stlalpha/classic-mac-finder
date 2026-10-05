@@ -34,6 +34,7 @@
 
 
 - (CCIClassicFinderWindowController *)createWindowForDirectory:(CFRDirectoryModel *)directoryModel;
+- (NSRect)initialFrameForDirectory:(CFRDirectoryModel *)directoryModel relativeToWindow:(nullable NSWindow *)parentWindow;
 
 - (NSUInteger)numberOfOpenWindows;
 

@@ -41,6 +41,7 @@
 - (void)updateSpringLoadedFolderForDraggedIcon:(NSView *)iconView atScreenPoint:(NSPoint)screenPoint;
 - (void)finishIconDrag:(NSView *)iconView atScreenPoint:(NSPoint)screenPoint;
 - (void)openFolder:(CFRDirectoryModel *)directory fromIconView:(NSView *)iconView springLoaded:(BOOL)springLoaded;
+- (void)persistSpatialState;
 - (void)refreshDirectoryListing;
 - (void)applyLabelIndex:(NSInteger)labelIndex;
 

@@ -178,13 +178,9 @@
 - (void)openFolder:(CFRDirectoryModel *)directory fromIconView:(NSView *)iconView springLoaded:(BOOL)springLoaded
 {
     [CFRFloppyDisk restoreDirectoryProperties:directory];
-    NSSize dimensions = directory.windowDimensions;
-    if (dimensions.width <= 0.0) dimensions.width = 500.0;
-    if (dimensions.height <= 0.0) dimensions.height = 300.0;
-    directory.windowDimensions = dimensions;
-    if (directory.windowPosition.x < 0.0 || directory.windowPosition.y < 0.0) {
-        directory.windowPosition = NSMakePoint(self.window.frame.origin.x + 30.0, self.window.frame.origin.y - 30.0);
-    }
+    NSRect initialFrame = [CFRWindowManager.sharedInstance initialFrameForDirectory:directory relativeToWindow:self.window];
+    directory.windowPosition = initialFrame.origin;
+    directory.windowDimensions = initialFrame.size;
     [CFRFloppyDisk persistDirectoryProperties:directory];
 
     if ([iconView conformsToProtocol:@protocol(CCIFinderIconProtocol)]) {
@@ -204,6 +200,14 @@
                                              selector:@selector(closeOpenedFolder:)
                                                  name:NSWindowWillCloseNotification
                                                object:controller.window];
+}
+
+- (void)persistSpatialState
+{
+    if (self.window == nil || self.springLoadedWindow) return;
+    self.directoryModel.windowPosition = self.window.frame.origin;
+    self.directoryModel.windowDimensions = self.window.frame.size;
+    [CFRFloppyDisk persistDirectoryProperties:self.directoryModel];
 }
 
 - (NSView *)iconAtScreenPoint:(NSPoint)screenPoint
