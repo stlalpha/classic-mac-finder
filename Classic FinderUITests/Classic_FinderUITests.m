@@ -91,12 +91,60 @@
     openedFolderScreenshot.lifetime = XCTAttachmentLifetimeKeepAlways;
     [self addAttachment:openedFolderScreenshot];
 
-    [[frontWindow coordinateWithNormalizedOffset:CGVectorMake(0.03, 0.02)] click];
+    [[[frontWindow coordinateWithNormalizedOffset:CGVectorMake(0.0, 0.0)] coordinateWithOffset:CGVectorMake(14.0, 9.0)] click];
     NSPredicate *oneWindowPredicate = [NSPredicate predicateWithFormat:@"count == 1"];
     XCTNSPredicateExpectation *parentWindowExpectation = [[XCTNSPredicateExpectation alloc] initWithPredicate:oneWindowPredicate
                                                                                                      object:self.application.windows];
     XCTAssertEqual([XCTWaiter waitForExpectations:@[parentWindowExpectation] timeout:5.0], XCTWaiterResultCompleted,
                    @"Closing the Users window should finish its ZoomRect and return to the root window.");
+}
+
+- (void)testCloseBoxClosesWindowThreeFoldersDeep
+{
+    [self.application launch];
+
+    XCUIElement *usersFolder = self.application.buttons[@"Users"];
+    XCTAssertTrue([usersFolder waitForExistenceWithTimeout:10.0]);
+    [[usersFolder coordinateWithNormalizedOffset:CGVectorMake(0.5, 0.5)] doubleTap];
+
+    XCUIElement *homeFolder = self.application.buttons[@"jm"];
+    XCTAssertTrue([homeFolder waitForExistenceWithTimeout:10.0]);
+    [[homeFolder coordinateWithNormalizedOffset:CGVectorMake(0.5, 0.5)] doubleTap];
+
+    NSPredicate *nestedFolderPredicate = [NSPredicate predicateWithFormat:@"label == %@", @"110m_cultural"];
+    XCUIElement *nestedFolder = [[self.application descendantsMatchingType:XCUIElementTypeTableRow] matchingPredicate:nestedFolderPredicate].firstMatch;
+    XCTAssertTrue([nestedFolder waitForExistenceWithTimeout:10.0]);
+    [[nestedFolder coordinateWithNormalizedOffset:CGVectorMake(0.5, 0.5)] doubleTap];
+
+    NSPredicate *fourWindowsPredicate = [NSPredicate predicateWithFormat:@"count == 4"];
+    XCTNSPredicateExpectation *fourWindowsExpectation = [[XCTNSPredicateExpectation alloc] initWithPredicate:fourWindowsPredicate
+                                                                                                      object:self.application.windows];
+    XCTAssertEqual([XCTWaiter waitForExpectations:@[fourWindowsExpectation] timeout:10.0], XCTWaiterResultCompleted);
+
+    XCUIElement *frontWindow = [self.application.windows elementBoundByIndex:0];
+    [[[frontWindow coordinateWithNormalizedOffset:CGVectorMake(0.0, 0.0)] coordinateWithOffset:CGVectorMake(14.0, 9.0)] click];
+
+    NSPredicate *threeWindowsPredicate = [NSPredicate predicateWithFormat:@"count == 3"];
+    XCTNSPredicateExpectation *threeWindowsExpectation = [[XCTNSPredicateExpectation alloc] initWithPredicate:threeWindowsPredicate
+                                                                                                       object:self.application.windows];
+    XCTAssertEqual([XCTWaiter waitForExpectations:@[threeWindowsExpectation] timeout:5.0], XCTWaiterResultCompleted,
+                   @"Clicking the close box should close the deepest folder window.");
+
+    XCUIElement *parentWindow = [self.application.windows elementBoundByIndex:0];
+    [[[parentWindow coordinateWithNormalizedOffset:CGVectorMake(0.0, 0.0)] coordinateWithOffset:CGVectorMake(14.0, 9.0)] click];
+    NSPredicate *twoWindowsPredicate = [NSPredicate predicateWithFormat:@"count == 2"];
+    XCTNSPredicateExpectation *twoWindowsExpectation = [[XCTNSPredicateExpectation alloc] initWithPredicate:twoWindowsPredicate
+                                                                                                      object:self.application.windows];
+    XCTAssertEqual([XCTWaiter waitForExpectations:@[twoWindowsExpectation] timeout:5.0], XCTWaiterResultCompleted,
+                   @"The parent folder window should also close from its close box.");
+
+    parentWindow = [self.application.windows elementBoundByIndex:0];
+    [[[parentWindow coordinateWithNormalizedOffset:CGVectorMake(0.0, 0.0)] coordinateWithOffset:CGVectorMake(14.0, 9.0)] click];
+    NSPredicate *oneWindowPredicate = [NSPredicate predicateWithFormat:@"count == 1"];
+    XCTNSPredicateExpectation *oneWindowExpectation = [[XCTNSPredicateExpectation alloc] initWithPredicate:oneWindowPredicate
+                                                                                                     object:self.application.windows];
+    XCTAssertEqual([XCTWaiter waitForExpectations:@[oneWindowExpectation] timeout:5.0], XCTWaiterResultCompleted,
+                   @"The Users window should close and leave the root window open.");
 }
 
 @end
