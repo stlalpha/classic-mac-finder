@@ -42,6 +42,7 @@
 - (void)selectListRow:(CCIClassicListRow *)row;
 - (void)openListItem:(id<CFRFileSystemObject>)item;
 - (void)sortListByStyle:(NSString *)style;
+- (void)handleListScrollWheelEvent:(NSEvent *)event;
 @end
 
 @interface CCIClassicListRow : NSControl
@@ -149,6 +150,11 @@ static NSString *CCIListDisplayTitle(id<CFRFileSystemObject> item)
 
 - (void)mouseDown:(NSEvent *)event { [self.finderWindow selectListRow:self]; }
 - (void)mouseUp:(NSEvent *)event { if (event.clickCount > 1) [self.finderWindow openListItem:self.item]; }
+- (void)scrollWheel:(NSEvent *)event
+{
+    if (self.finderWindow != nil) [self.finderWindow handleListScrollWheelEvent:event];
+    else [super scrollWheel:event];
+}
 @end
 
 @interface CCIClassicListHeader : NSView
@@ -503,6 +509,11 @@ static NSString *CCIListDisplayTitle(id<CFRFileSystemObject> item)
 - (void)sortListByStyle:(NSString *)style
 {
     [self setDisplayStyle:style];
+}
+
+- (void)handleListScrollWheelEvent:(NSEvent *)event
+{
+    [self.scrollView scrollWheel:event];
 }
 
 - (void)openListItem:(id<CFRFileSystemObject>)item

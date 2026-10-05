@@ -216,6 +216,48 @@
 }
 
 #pragma mark - EVENT METHODS
+- (void)scrollWheel:(NSEvent *)event
+{
+    CGFloat deltaX = event.scrollingDeltaX;
+    CGFloat deltaY = event.scrollingDeltaY;
+    if (!event.hasPreciseScrollingDeltas) {
+        deltaX *= 10.0;
+        deltaY *= 10.0;
+    }
+
+    if ((event.modifierFlags & NSEventModifierFlagShift) != 0 && deltaX == 0.0) {
+        deltaX = -deltaY;
+        deltaY = 0.0;
+    }
+
+    [self scrollContentByDeltaX:deltaX deltaY:deltaY];
+}
+
+- (void)scrollContentByDeltaX:(CGFloat)deltaX deltaY:(CGFloat)deltaY
+{
+    CGFloat maximumX = MAX(0.0, self.scrollableDistance.width);
+    CGFloat maximumY = MAX(0.0, self.scrollableDistance.height);
+    CGFloat newX = MIN(0.0, MAX(-maximumX, self.currentScrollPosition.x - deltaX));
+    CGFloat newY = MIN(0.0, MAX(-maximumY, self.currentScrollPosition.y + deltaY));
+    if (newX == self.currentScrollPosition.x && newY == self.currentScrollPosition.y) return;
+
+    self.currentScrollPosition = NSMakePoint(newX, newY);
+    NSRect contentFrame = self.contentView.frame;
+    contentFrame.origin = self.currentScrollPosition;
+    [self.contentView setFrame:contentFrame];
+
+    CGFloat verticalTrackHeight = MAX(0.0, self.verticalScrollbar.frame.size.height - 32.0);
+    CGFloat horizontalTrackWidth = MAX(0.0, self.horizontalScrollbar.frame.size.width - 32.0);
+    CGFloat verticalTravel = MAX(0.0, verticalTrackHeight - 16.0);
+    CGFloat horizontalTravel = MAX(0.0, horizontalTrackWidth - 16.0);
+    CGFloat verticalThumbY = maximumY > 0.0 ? 16.0 + (-newY / maximumY) * verticalTravel : 16.0;
+    CGFloat horizontalThumbX = maximumX > 0.0 ? 16.0 + (-newX / maximumX) * horizontalTravel : 16.0;
+
+    self.currentScrollerBarPosition = NSMakePoint(horizontalThumbX, verticalThumbY);
+    [self.verticalScrollbar setScrollerYPosition:verticalThumbY];
+    [self.horizontalScrollbar setScrollerXPosition:horizontalThumbX];
+}
+
 - (void)performScrollAction:(id)sender
 {
     CCIScrollbarArrowButton *clickedBtn = (CCIScrollbarArrowButton *)sender;
@@ -312,6 +354,9 @@
 
 - (void)resizeContentView:(NSRect)newFrame
 {
+    newFrame.origin = NSZeroPoint;
+    self.currentScrollPosition = NSZeroPoint;
+    self.currentScrollerBarPosition = NSMakePoint(16.0, 16.0);
     [[self contentView] setFrame:newFrame];
     
     CGFloat scrollableDistanceW = (newFrame.size.width > self.frame.size.width) ? (newFrame.size.width - self.frame.size.width + 14.0) : 0.0;
@@ -322,6 +367,8 @@
     
     [[self verticalScrollbar] updateMaxContentSize:newFrame.size.height];
     [[self horizontalScrollbar] updateMaxContentSize:newFrame.size.width];
+    [[self verticalScrollbar] setScrollerYPosition:16.0];
+    [[self horizontalScrollbar] setScrollerXPosition:16.0];
 
     if (self.contentView.frame.size.width <= self.frame.size.width) {
         [[self horizontalScrollbar] setEnabled:NO];
