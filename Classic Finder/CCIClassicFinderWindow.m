@@ -127,7 +127,7 @@
                                                 60.0);
                 
                 CCIClassicFolder *folderIcon = [[CCIClassicFolder alloc] initWithFrame:folderFrame];
-                folderIcon.folderLabel.stringValue = [directoryItem title];
+                [folderIcon setFolderTitleText:[directoryItem title]];
                 [folderIcon setDirectoryModel:directoryItem];
                 
                 [self.scrollView.contentView addSubview:folderIcon];
@@ -150,7 +150,7 @@
                                                 60.0);
                 
                 CCIClassicFile *fileIcon = [[CCIClassicFile alloc] initWithFrame:folderFrame];
-                fileIcon.fileLabel.stringValue = [fileItem title];
+                [fileIcon setFileTitleText:[fileItem title]];
                 fileIcon.representedFile = [fileItem objectPath];
                 
                 [self.scrollView.contentView addSubview:fileIcon];

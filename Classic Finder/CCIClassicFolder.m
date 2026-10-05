@@ -186,6 +186,12 @@
                                                                               attributes:attributes];
 }
 
+- (void)setFolderTitleText:(NSString *)title
+{
+    self.folderLabel.stringValue = title ?: @"";
+    [self normalFolderTitleTextColor];
+}
+
 - (void)reverseFolderTitleTextColor
 {
     NSDictionary *attributes = @{

@@ -27,5 +27,6 @@
 
 - (void)selectItem;
 - (void)deselectItem;
+- (void)setFileTitleText:(NSString *)title;
 
 @end

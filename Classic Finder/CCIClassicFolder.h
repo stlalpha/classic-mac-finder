@@ -29,6 +29,7 @@
 
 - (void)selectItem;
 - (void)deselectItem;
+- (void)setFolderTitleText:(NSString *)title;
 - (void)setOpenItemState;
 - (void)setCloseItemState;
 

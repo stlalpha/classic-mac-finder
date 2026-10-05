@@ -98,6 +98,12 @@
                                                                             attributes:attributes];
 }
 
+- (void)setFileTitleText:(NSString *)title
+{
+    self.fileLabel.stringValue = title ?: @"";
+    [self normalFileTitleTextColor];
+}
+
 - (void)reverseFileTitleTextColor
 {
     NSDictionary *attributes = @{
