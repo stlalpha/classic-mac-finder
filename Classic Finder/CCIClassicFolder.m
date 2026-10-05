@@ -143,7 +143,7 @@ static NSString *CCITruncatedIconTitle(NSString *title, NSFont *font, CGFloat ma
     self.dragStartLocation = [self.superview convertPoint:event.locationInWindow fromView:nil];
     self.dragStartFrame = self.frame;
     self.dragOccurred = NO;
-    [wc selectedNewFolder:self];
+    [wc selectItemView:self modifiers:event.modifierFlags];
 }
 
 - (void)mouseDragged:(NSEvent *)event

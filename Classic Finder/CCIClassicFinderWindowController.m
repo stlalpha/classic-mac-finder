@@ -156,26 +156,32 @@
 
 - (void)selectedNewFile:(CCIClassicFile *)file
 {
-    for (CCIClassicFile *file in self.selectedFiles) {
-        [file deselectItem];
-    }
-    
-    [self.selectedFiles removeAllObjects];
-    
-    [file selectItem];
-    [self.selectedFiles addObject:file];
+    [self selectItemView:file modifiers:0];
 }
 
 - (void)selectedNewFolder:(CCIClassicFolder *)folder
 {
-    for (CCIClassicFolder *folder in self.selectedFiles) {
-        [folder deselectItem];
+    [self selectItemView:folder modifiers:0];
+}
+
+- (void)selectItemView:(NSView *)item modifiers:(NSEventModifierFlags)modifiers
+{
+    BOOL extendSelection = (modifiers & (NSEventModifierFlagShift | NSEventModifierFlagCommand)) != 0;
+    NSUInteger selectedIndex = [self.selectedFiles indexOfObjectIdenticalTo:item];
+
+    if (!extendSelection) {
+        [self deselectAllItems];
+        selectedIndex = NSNotFound;
     }
-    
-    [self.selectedFiles removeAllObjects];
-    
-    [folder selectItem];
-    [self.selectedFiles addObject:folder];
+
+    if (extendSelection && selectedIndex != NSNotFound) {
+        [(id<CCIFinderIconProtocol>)item deselectItem];
+        [self.selectedFiles removeObjectAtIndex:selectedIndex];
+        return;
+    }
+
+    [(id<CCIFinderIconProtocol>)item selectItem];
+    [self.selectedFiles addObject:item];
 }
 
 - (void)deselectAllItems
@@ -187,6 +193,7 @@
     }
     
     [self.selectedFiles removeAllObjects];
+    [(CCIClassicFinderWindow *)self.window clearListSelection];
 }
 
 - (void)refreshSelectionAppearance

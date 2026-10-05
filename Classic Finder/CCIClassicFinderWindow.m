@@ -40,7 +40,7 @@
 @class CCIClassicListRow;
 
 @interface CCIClassicFinderWindow (ListViewActions)
-- (void)selectListRow:(CCIClassicListRow *)row;
+- (void)selectListRow:(CCIClassicListRow *)row modifiers:(NSEventModifierFlags)modifiers;
 - (void)openListItem:(id<CFRFileSystemObject>)item fromView:(NSView *)view;
 - (void)sortListByStyle:(NSString *)style;
 - (void)handleListScrollWheelEvent:(NSEvent *)event;
@@ -167,7 +167,7 @@ static NSString *CCIListDisplayTitle(id<CFRFileSystemObject> item)
     NSBezierPath *separator = [NSBezierPath bezierPath]; [separator moveToPoint:NSMakePoint(0, self.bounds.size.height - 0.5)]; [separator lineToPoint:NSMakePoint(self.bounds.size.width, self.bounds.size.height - 0.5)]; [separator stroke];
 }
 
-- (void)mouseDown:(NSEvent *)event { [self.finderWindow selectListRow:self]; }
+- (void)mouseDown:(NSEvent *)event { [self.finderWindow selectListRow:self modifiers:event.modifierFlags]; }
 - (void)mouseUp:(NSEvent *)event { if (event.clickCount > 1) [self.finderWindow openListItem:self.item fromView:self]; }
 - (void)scrollWheel:(NSEvent *)event
 {
@@ -293,6 +293,7 @@ static void CCIAnimateZoomRect(NSRect fromRect, NSRect toRect, NSWindowLevel lev
 @property (nonatomic, strong) CCIResizeOverlayOutline *resizeOverlay;
 @property (nonatomic, copy) NSString *displayStyle;
 @property (nonatomic, weak) CCIClassicListRow *selectedListRow;
+@property (nonatomic, strong) NSMutableArray<CCIClassicListRow *> *selectedListRows;
 
 @end
 
@@ -561,6 +562,8 @@ static void CCIAnimateZoomRect(NSRect fromRect, NSRect toRect, NSWindowLevel lev
     controller.directoryModel.displayStyle = style;
     [CFRFloppyDisk persistDirectoryProperties:controller.directoryModel];
     self.selectedListRow = nil;
+    for (CCIClassicListRow *row in self.selectedListRows) row.selected = NO;
+    [self.selectedListRows removeAllObjects];
     CCIScrollContentView *content = self.scrollView.contentView;
     [content.subviews.copy enumerateObjectsUsingBlock:^(NSView *view, NSUInteger idx, BOOL *stop) { [view removeFromSuperview]; }];
 
@@ -640,12 +643,70 @@ static void CCIAnimateZoomRect(NSRect fromRect, NSRect toRect, NSWindowLevel lev
     NSRect size = content.frame; size.size.height = MAX(self.scrollView.frame.size.height, (row + 1) * iconSize + 15.0); [self.scrollView resizeContentView:size];
 }
 
-- (void)selectListRow:(CCIClassicListRow *)row
+- (NSArray<CCIClassicListRow *> *)visibleListRows
 {
-    self.selectedListRow.selected = NO;
-    [self.selectedListRow setNeedsDisplay:YES];
-    self.selectedListRow = row;
-    row.selected = YES;
+    NSMutableArray<CCIClassicListRow *> *rows = [NSMutableArray array];
+    for (NSView *view in self.scrollView.contentView.subviews) {
+        if ([view isKindOfClass:CCIClassicListRow.class]) [rows addObject:(CCIClassicListRow *)view];
+    }
+    return [rows sortedArrayUsingComparator:^NSComparisonResult(CCIClassicListRow *a, CCIClassicListRow *b) {
+        if (a.frame.origin.y < b.frame.origin.y) return NSOrderedAscending;
+        if (a.frame.origin.y > b.frame.origin.y) return NSOrderedDescending;
+        return NSOrderedSame;
+    }];
+}
+
+- (void)clearListSelection
+{
+    for (CCIClassicListRow *row in self.selectedListRows) {
+        row.selected = NO;
+        [row setNeedsDisplay:YES];
+    }
+    [self.selectedListRows removeAllObjects];
+    self.selectedListRow = nil;
+}
+
+- (void)selectListRow:(CCIClassicListRow *)row modifiers:(NSEventModifierFlags)modifiers
+{
+    if (self.selectedListRows == nil) self.selectedListRows = [NSMutableArray array];
+    BOOL commandClick = (modifiers & NSEventModifierFlagCommand) != 0;
+    BOOL shiftClick = (modifiers & NSEventModifierFlagShift) != 0;
+
+    if (shiftClick && !commandClick && self.selectedListRow != nil) {
+        CCIClassicListRow *anchorRow = self.selectedListRow;
+        NSArray<CCIClassicListRow *> *rows = [self visibleListRows];
+        NSUInteger anchorIndex = [rows indexOfObjectIdenticalTo:anchorRow];
+        NSUInteger clickedIndex = [rows indexOfObjectIdenticalTo:row];
+        if (anchorIndex != NSNotFound && clickedIndex != NSNotFound) {
+            [self clearListSelection];
+            self.selectedListRow = anchorRow;
+            NSUInteger startIndex = MIN(anchorIndex, clickedIndex);
+            NSUInteger endIndex = MAX(anchorIndex, clickedIndex);
+            for (NSUInteger index = startIndex; index <= endIndex; index++) {
+                CCIClassicListRow *selectedRow = rows[index];
+                selectedRow.selected = YES;
+                [self.selectedListRows addObject:selectedRow];
+                [selectedRow setNeedsDisplay:YES];
+            }
+            return;
+        }
+    }
+
+    if (!commandClick && !shiftClick) {
+        [self clearListSelection];
+        self.selectedListRow = row;
+    } else if (self.selectedListRow == nil) {
+        self.selectedListRow = row;
+    }
+
+    NSUInteger existingIndex = [self.selectedListRows indexOfObjectIdenticalTo:row];
+    if ((commandClick || shiftClick) && existingIndex != NSNotFound) {
+        row.selected = NO;
+        [self.selectedListRows removeObjectAtIndex:existingIndex];
+    } else {
+        row.selected = YES;
+        [self.selectedListRows addObject:row];
+    }
     [row setNeedsDisplay:YES];
 }
 
@@ -681,11 +742,13 @@ static void CCIAnimateZoomRect(NSRect fromRect, NSRect toRect, NSWindowLevel lev
 
 - (void)applyLabelIndex:(NSInteger)labelIndex
 {
-    if (self.selectedListRow != nil) {
-        self.selectedListRow.item.labelIndex = labelIndex;
-        if ([self.selectedListRow.item isKindOfClass:CFRDirectoryModel.class]) [CFRFloppyDisk persistDirectoryProperties:(CFRDirectoryModel *)self.selectedListRow.item];
-        else [CFRFloppyDisk persistFileProperties:(CFRFileModel *)self.selectedListRow.item];
-        [self.selectedListRow setNeedsDisplay:YES];
+    if (self.selectedListRows.count > 0) {
+        for (CCIClassicListRow *row in self.selectedListRows) {
+            row.item.labelIndex = labelIndex;
+            if ([row.item isKindOfClass:CFRDirectoryModel.class]) [CFRFloppyDisk persistDirectoryProperties:(CFRDirectoryModel *)row.item];
+            else [CFRFloppyDisk persistFileProperties:(CFRFileModel *)row.item];
+            [row setNeedsDisplay:YES];
+        }
     } else {
         [(CCIClassicFinderWindowController *)self.windowController applyLabelIndex:labelIndex];
     }
@@ -711,7 +774,7 @@ static void CCIAnimateZoomRect(NSRect fromRect, NSRect toRect, NSWindowLevel lev
 
 - (void)refreshListSelectionAppearance
 {
-    [self.selectedListRow setNeedsDisplay:YES];
+    for (CCIClassicListRow *row in self.selectedListRows) [row setNeedsDisplay:YES];
 }
 
 - (BOOL)canBecomeKeyWindow

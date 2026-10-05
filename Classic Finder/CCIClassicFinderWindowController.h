@@ -36,6 +36,7 @@
 
 - (void)selectedNewFile:(CCIClassicFile *)file;
 - (void)selectedNewFolder:(CCIClassicFolder *)folder;
+- (void)selectItemView:(NSView *)item modifiers:(NSEventModifierFlags)modifiers;
 - (void)deselectAllItems;
 - (void)refreshSelectionAppearance;
 - (void)moveIconView:(NSView *)iconView toFrame:(NSRect)frame;

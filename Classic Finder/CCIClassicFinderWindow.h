@@ -43,5 +43,6 @@
 - (void)animateOpeningFromScreenRect:(NSRect)screenRect;
 - (void)applyLabelIndex:(NSInteger)labelIndex;
 - (void)refreshListSelectionAppearance;
+- (void)clearListSelection;
 
 @end
