@@ -209,6 +209,23 @@
 - (void)useSystem7Appearance:(id)sender { [self applyAppearanceVersion:CCIClassicAppearanceSystem7]; }
 - (void)useMacOS9Appearance:(id)sender { [self applyAppearanceVersion:CCIClassicAppearanceMacOS9]; }
 
+- (void)toggleZoomRectAnimations:(id)sender
+{
+    CFRWindowManager *manager = CFRWindowManager.sharedInstance;
+    manager.zoomRectAnimationsEnabled = !manager.zoomRectAnimationsEnabled;
+}
+
+- (void)toggleSpringLoadedFolders:(id)sender
+{
+    CFRWindowManager *manager = CFRWindowManager.sharedInstance;
+    manager.springLoadedFoldersEnabled = !manager.springLoadedFoldersEnabled;
+}
+
+- (void)setSpringLoadedFolderDelay:(id)sender
+{
+    CFRWindowManager.sharedInstance.springLoadedFolderDelay = [sender tag] / 100.0;
+}
+
 - (void)applyLabelIndex:(NSInteger)labelIndex
 {
     CCIClassicFinderWindow *window = (CCIClassicFinderWindow *)NSApp.keyWindow;
@@ -229,6 +246,9 @@
     SEL action = menuItem.action;
     if (action == @selector(useSystem7Appearance:)) menuItem.state = CCIApplicationStyles.instance.appearanceVersion == CCIClassicAppearanceSystem7;
     else if (action == @selector(useMacOS9Appearance:)) menuItem.state = CCIApplicationStyles.instance.appearanceVersion == CCIClassicAppearanceMacOS9;
+    else if (action == @selector(toggleZoomRectAnimations:)) menuItem.state = CFRWindowManager.sharedInstance.zoomRectAnimationsEnabled;
+    else if (action == @selector(toggleSpringLoadedFolders:)) menuItem.state = CFRWindowManager.sharedInstance.springLoadedFoldersEnabled;
+    else if (action == @selector(setSpringLoadedFolderDelay:)) menuItem.state = fabs(CFRWindowManager.sharedInstance.springLoadedFolderDelay - (menuItem.tag / 100.0)) < 0.01;
     else {
         NSDictionary<NSString *, NSString *> *viewActions = @{
             NSStringFromSelector(@selector(showByIcon:)): @"Icon",

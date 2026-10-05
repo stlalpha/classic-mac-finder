@@ -32,6 +32,49 @@
 
 @implementation CFRWindowManager
 
+- (instancetype)init
+{
+    self = [super init];
+    if (self) {
+        [[NSUserDefaults standardUserDefaults] registerDefaults:@{
+            @"CCIZoomRectAnimationsEnabled": @YES,
+            @"CCISpringLoadedFoldersEnabled": @YES,
+            @"CCISpringLoadedFolderDelay": @0.75
+        }];
+    }
+    return self;
+}
+
+- (BOOL)zoomRectAnimationsEnabled
+{
+    return [[NSUserDefaults standardUserDefaults] boolForKey:@"CCIZoomRectAnimationsEnabled"];
+}
+
+- (void)setZoomRectAnimationsEnabled:(BOOL)enabled
+{
+    [[NSUserDefaults standardUserDefaults] setBool:enabled forKey:@"CCIZoomRectAnimationsEnabled"];
+}
+
+- (BOOL)springLoadedFoldersEnabled
+{
+    return [[NSUserDefaults standardUserDefaults] boolForKey:@"CCISpringLoadedFoldersEnabled"];
+}
+
+- (void)setSpringLoadedFoldersEnabled:(BOOL)enabled
+{
+    [[NSUserDefaults standardUserDefaults] setBool:enabled forKey:@"CCISpringLoadedFoldersEnabled"];
+}
+
+- (NSTimeInterval)springLoadedFolderDelay
+{
+    return [[NSUserDefaults standardUserDefaults] doubleForKey:@"CCISpringLoadedFolderDelay"];
+}
+
+- (void)setSpringLoadedFolderDelay:(NSTimeInterval)delay
+{
+    [[NSUserDefaults standardUserDefaults] setDouble:MAX(0.1, delay) forKey:@"CCISpringLoadedFolderDelay"];
+}
+
 +(CFRWindowManager *)sharedInstance
 {
     static CFRWindowManager *sharedInstance = nil;

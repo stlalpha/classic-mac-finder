@@ -165,6 +165,35 @@
                         </items>
                     </menu>
                 </menuItem>
+                <menuItem title="Effects" id="classicEffectsMenu">
+                    <modifierMask key="keyEquivalentModifierMask"/>
+                    <menu key="submenu" title="Effects" id="classicEffectsSubmenu">
+                        <items>
+                            <menuItem title="ZoomRect Folder Window Animation" id="zoomRectEffectsItem">
+                                <connections><action selector="toggleZoomRectAnimations:" target="Voe-Tx-rLC" id="zoomRectEffectsAction"/></connections>
+                            </menuItem>
+                            <menuItem isSeparatorItem="YES" id="springEffectsSeparator"/>
+                            <menuItem title="Spring-Loaded Folders" id="springLoadedEffectsItem">
+                                <connections><action selector="toggleSpringLoadedFolders:" target="Voe-Tx-rLC" id="springLoadedEffectsAction"/></connections>
+                            </menuItem>
+                            <menuItem title="Spring-Loaded Delay" id="springDelayMenuItem">
+                                <menu key="submenu" title="Spring-Loaded Delay" id="springDelaySubmenu">
+                                    <items>
+                                        <menuItem title="Short" tag="40" id="springDelayShort">
+                                            <connections><action selector="setSpringLoadedFolderDelay:" target="Voe-Tx-rLC" id="springDelayShortAction"/></connections>
+                                        </menuItem>
+                                        <menuItem title="Medium" tag="75" id="springDelayMedium">
+                                            <connections><action selector="setSpringLoadedFolderDelay:" target="Voe-Tx-rLC" id="springDelayMediumAction"/></connections>
+                                        </menuItem>
+                                        <menuItem title="Long" tag="120" id="springDelayLong">
+                                            <connections><action selector="setSpringLoadedFolderDelay:" target="Voe-Tx-rLC" id="springDelayLongAction"/></connections>
+                                        </menuItem>
+                                    </items>
+                                </menu>
+                            </menuItem>
+                        </items>
+                    </menu>
+                </menuItem>
                 <menuItem title="View" id="H8h-7b-M4v">
                     <modifierMask key="keyEquivalentModifierMask"/>
                     <menu key="submenu" title="View" id="HyV-fh-RgO">

@@ -40,6 +40,7 @@
 - (void)finishedResizeToFrame:(NSRect)frameRect;
 - (void)setDisplayStyle:(NSString *)style;
 - (void)moveIconView:(NSView *)iconView toFrame:(NSRect)frame;
+- (void)animateOpeningFromScreenRect:(NSRect)screenRect;
 - (void)applyLabelIndex:(NSInteger)labelIndex;
 
 @end

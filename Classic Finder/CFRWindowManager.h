@@ -26,6 +26,10 @@
 
 @interface CFRWindowManager : NSObject <NSWindowDelegate>
 
+@property (nonatomic) BOOL zoomRectAnimationsEnabled;
+@property (nonatomic) BOOL springLoadedFoldersEnabled;
+@property (nonatomic) NSTimeInterval springLoadedFolderDelay;
+
 +(CFRWindowManager *)sharedInstance;
 
 

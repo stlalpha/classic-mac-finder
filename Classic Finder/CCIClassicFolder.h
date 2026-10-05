@@ -26,6 +26,7 @@
 
 @property (nonatomic, strong) CFRDirectoryModel *directoryModel;
 @property (nonatomic, strong) NSTextField *folderLabel;
+@property (nonatomic, readonly) BOOL folderOpened;
 
 - (void)selectItem;
 - (void)deselectItem;

@@ -35,6 +35,8 @@
 @property (nonatomic, copy) NSString *windowDirectoryName;
 @property (nonatomic, copy) NSArray *fileList;
 @property (nonatomic, strong) NSMutableArray *selectedFiles;
+@property (nonatomic, strong) NSTimer *springHoverTimer;
+@property (nonatomic, weak) CCIClassicFolder *springHoverFolder;
 
 @end
 
@@ -162,6 +164,157 @@
 - (void)moveIconView:(NSView *)iconView toFrame:(NSRect)frame
 {
     [(CCIClassicFinderWindow *)self.window moveIconView:iconView toFrame:frame];
+}
+
+- (NSRect)screenIconRectForView:(NSView *)view
+{
+    NSRect localRect = view.bounds;
+    if ([view isKindOfClass:CCIClassicFolder.class]) localRect = NSMakeRect(14.5, 2.0, 31.0, 25.0);
+    else if ([view isKindOfClass:CCIClassicFile.class]) localRect = NSMakeRect(18.5, 2.0, 31.0, 31.0);
+    else if ([view isKindOfClass:NSControl.class]) localRect = NSMakeRect(1.0, 1.0, 20.0, 20.0);
+    return [view.window convertRectToScreen:[view convertRect:localRect toView:nil]];
+}
+
+- (void)openFolder:(CFRDirectoryModel *)directory fromIconView:(NSView *)iconView springLoaded:(BOOL)springLoaded
+{
+    [CFRFloppyDisk restoreDirectoryProperties:directory];
+    NSSize dimensions = directory.windowDimensions;
+    if (dimensions.width <= 0.0) dimensions.width = 500.0;
+    if (dimensions.height <= 0.0) dimensions.height = 300.0;
+    directory.windowDimensions = dimensions;
+    if (directory.windowPosition.x < 0.0 || directory.windowPosition.y < 0.0) {
+        directory.windowPosition = NSMakePoint(self.window.frame.origin.x + 30.0, self.window.frame.origin.y - 30.0);
+    }
+    [CFRFloppyDisk persistDirectoryProperties:directory];
+
+    if ([iconView conformsToProtocol:@protocol(CCIFinderIconProtocol)]) {
+        [(id<CCIFinderIconProtocol>)iconView setOpenItemState];
+    }
+    NSUInteger windowCount = CFRWindowManager.sharedInstance.numberOfOpenWindows;
+    CCIClassicFinderWindowController *controller = [CFRWindowManager.sharedInstance createWindowForDirectory:directory];
+    [controller showWindow:self];
+    if (windowCount < CFRWindowManager.sharedInstance.numberOfOpenWindows) {
+        NSRect iconScreenRect = [self screenIconRectForView:iconView];
+        [(CCIClassicFinderWindow *)controller.window animateOpeningFromScreenRect:iconScreenRect];
+    }
+    if (springLoaded && windowCount < CFRWindowManager.sharedInstance.numberOfOpenWindows) {
+        controller.springLoadedWindow = YES;
+    }
+    [[NSNotificationCenter defaultCenter] addObserver:self
+                                             selector:@selector(closeOpenedFolder:)
+                                                 name:NSWindowWillCloseNotification
+                                               object:controller.window];
+}
+
+- (NSView *)iconAtScreenPoint:(NSPoint)screenPoint
+{
+    for (NSWindow *window in NSApp.orderedWindows) {
+        if (![window isKindOfClass:CCIClassicFinderWindow.class] || !NSPointInRect(screenPoint, window.frame)) continue;
+        NSPoint windowPoint = [window convertPointFromScreen:screenPoint];
+        NSPoint contentPoint = [window.contentView convertPoint:windowPoint fromView:nil];
+        NSView *hitView = [window.contentView hitTest:contentPoint];
+        while (hitView != nil && ![hitView isKindOfClass:CCIClassicFolder.class] && ![hitView isKindOfClass:CCIClassicFile.class]) hitView = hitView.superview;
+        if ([hitView isKindOfClass:CCIClassicFolder.class] || [hitView isKindOfClass:CCIClassicFile.class]) return hitView;
+    }
+    return nil;
+}
+
+- (CCIClassicFolder *)folderAtScreenPoint:(NSPoint)screenPoint
+{
+    NSView *icon = [self iconAtScreenPoint:screenPoint];
+    return [icon isKindOfClass:CCIClassicFolder.class] ? (CCIClassicFolder *)icon : nil;
+}
+
+- (void)updateSpringLoadedFolderForDraggedIcon:(NSView *)iconView atScreenPoint:(NSPoint)screenPoint
+{
+    if (!CFRWindowManager.sharedInstance.springLoadedFoldersEnabled) {
+        [self.springHoverTimer invalidate]; self.springHoverTimer = nil; self.springHoverFolder = nil;
+        return;
+    }
+    CCIClassicFolder *folder = [self folderAtScreenPoint:screenPoint];
+    if (folder == iconView || folder == self.springHoverFolder) return;
+    [self.springHoverTimer invalidate]; self.springHoverTimer = nil;
+    self.springHoverFolder = folder;
+    if (folder == nil || folder.folderOpened) return;
+    self.springHoverTimer = [NSTimer timerWithTimeInterval:CFRWindowManager.sharedInstance.springLoadedFolderDelay
+                                                    target:self
+                                                  selector:@selector(springHoverDelayElapsed:)
+                                                  userInfo:nil
+                                                   repeats:NO];
+    [[NSRunLoop mainRunLoop] addTimer:self.springHoverTimer forMode:NSRunLoopCommonModes];
+}
+
+- (void)springHoverDelayElapsed:(NSTimer *)timer
+{
+    CCIClassicFolder *folder = self.springHoverFolder;
+    if (!CFRWindowManager.sharedInstance.springLoadedFoldersEnabled || folder == nil || folder.window == nil) return;
+    if (![NSApp.orderedWindows containsObject:folder.window]) return;
+    [((CCIClassicFinderWindowController *)folder.window.windowController) openFolder:folder.directoryModel
+                                                                         fromIconView:folder
+                                                                          springLoaded:YES];
+}
+
+- (void)refreshDirectoryListing
+{
+    NSError *error = nil;
+    self.fileList = [CFRFileSystemOperations getListingForDirectory:self.directoryModel.objectPath error:&error];
+    if (error != nil || self.fileList == nil) return;
+    CCIClassicFinderWindow *window = (CCIClassicFinderWindow *)self.window;
+    window.fileList = self.fileList;
+    [window setDisplayStyle:window.displayStyle];
+}
+
+- (void)finishIconDrag:(NSView *)iconView atScreenPoint:(NSPoint)screenPoint
+{
+    [self.springHoverTimer invalidate]; self.springHoverTimer = nil; self.springHoverFolder = nil;
+    CCIClassicFolder *folder = [self folderAtScreenPoint:screenPoint];
+    if (folder == iconView) folder = nil;
+    NSView *targetIcon = [self iconAtScreenPoint:screenPoint];
+    NSURL *destinationURL = folder.directoryModel.objectPath;
+    CCIClassicFinderWindowController *destinationController = (CCIClassicFinderWindowController *)folder.window.windowController;
+    if (folder.folderOpened) {
+        for (NSWindow *window in NSApp.orderedWindows) {
+            if (![window isKindOfClass:CCIClassicFinderWindow.class]) continue;
+            CCIClassicFinderWindowController *candidate = (CCIClassicFinderWindowController *)window.windowController;
+            if ([candidate.directoryModel.objectPath isEqual:destinationURL]) {
+                destinationController = candidate;
+                break;
+            }
+        }
+    }
+    if (folder == nil && (targetIcon == nil || targetIcon == iconView)) {
+        for (NSWindow *window in NSApp.orderedWindows) {
+            if ([window isKindOfClass:CCIClassicFinderWindow.class] && NSPointInRect(screenPoint, window.frame)) {
+                destinationController = (CCIClassicFinderWindowController *)window.windowController;
+                destinationURL = destinationController.directoryModel.objectPath;
+                break;
+            }
+        }
+    }
+
+    id<CFRFileSystemObject> item = [iconView isKindOfClass:CCIClassicFolder.class]
+        ? ((CCIClassicFolder *)iconView).directoryModel : ((CCIClassicFile *)iconView).fileModel;
+    NSURL *sourceParent = item.objectPath.URLByDeletingLastPathComponent;
+    BOOL destinationIsInsideDraggedDirectory = NO;
+    if ([item isKindOfClass:CFRDirectoryModel.class] && destinationURL != nil) {
+        NSString *sourcePath = item.objectPath.URLByStandardizingPath.path;
+        NSString *destinationPath = destinationURL.URLByStandardizingPath.path;
+        NSString *sourcePrefix = [sourcePath stringByAppendingString:@"/"];
+        destinationIsInsideDraggedDirectory = [destinationPath isEqualToString:sourcePath] || [destinationPath hasPrefix:sourcePrefix];
+    }
+    BOOL movedItem = destinationURL != nil && ![destinationURL isEqual:sourceParent] && !destinationIsInsideDraggedDirectory;
+    if (movedItem) {
+        if ([item isKindOfClass:CFRDirectoryModel.class]) [CFRFileSystemOperations moveDirectory:item.objectPath toNewLocation:destinationURL];
+        else [CFRFileSystemOperations moveFile:item.objectPath toNewLocation:destinationURL];
+        [self refreshDirectoryListing];
+        if (destinationController != nil && destinationController != self) [destinationController refreshDirectoryListing];
+    }
+
+    for (NSWindow *window in NSApp.windows.copy) {
+        if (![window isKindOfClass:CCIClassicFinderWindow.class]) continue;
+        CCIClassicFinderWindowController *springWindow = (CCIClassicFinderWindowController *)window.windowController;
+        if (springWindow.springLoadedWindow && springWindow != destinationController) [springWindow.window close];
+    }
 }
 
 - (void)applyLabelIndex:(NSInteger)labelIndex

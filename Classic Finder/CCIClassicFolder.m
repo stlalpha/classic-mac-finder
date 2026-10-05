@@ -45,9 +45,10 @@ static NSString *CCITruncatedIconTitle(NSString *title, NSFont *font, CGFloat ma
 @property (nonatomic, strong) CCIClassicFolderIcon *iconImage;
 
 @property BOOL folderSelected;
-@property BOOL folderOpened;
+@property (nonatomic, readwrite) BOOL folderOpened;
 @property NSPoint dragStartLocation;
 @property NSRect dragStartFrame;
+@property BOOL dragOccurred;
 
 @end
 
@@ -118,103 +119,26 @@ static NSString *CCITruncatedIconTitle(NSString *title, NSFont *font, CGFloat ma
     CCIClassicFinderWindowController *wc = event.window.windowController;
     self.dragStartLocation = [self.superview convertPoint:event.locationInWindow fromView:nil];
     self.dragStartFrame = self.frame;
+    self.dragOccurred = NO;
     [wc selectedNewFolder:self];
 }
 
 - (void)mouseDragged:(NSEvent *)event
 {
+    self.dragOccurred = YES;
     NSPoint point = [self.superview convertPoint:event.locationInWindow fromView:nil];
     NSRect frame = self.dragStartFrame;
     frame.origin.x += point.x - self.dragStartLocation.x;
     frame.origin.y += point.y - self.dragStartLocation.y;
     [(CCIClassicFinderWindowController *)event.window.windowController moveIconView:self toFrame:frame];
+    [(CCIClassicFinderWindowController *)event.window.windowController updateSpringLoadedFolderForDraggedIcon:self atScreenPoint:NSEvent.mouseLocation];
 }
 
 - (void)mouseUp:(NSEvent *)event
 {
-    if (event.clickCount == 2)
-    {
-        [CFRFloppyDisk restoreDirectoryProperties:[self directoryModel]];
-        
-        NSSize persistedWindowDimensions = [[self directoryModel] windowDimensions];
-        NSSize safeWindowDimensions = persistedWindowDimensions;
-        
-        if (persistedWindowDimensions.width < 0.0) {
-            safeWindowDimensions = NSMakeSize(500.0, persistedWindowDimensions.height);
-            [[self directoryModel] setWindowDimensions:safeWindowDimensions];
-            [CFRFloppyDisk persistDirectoryProperties:[self directoryModel]];
-        }
-        
-        if (persistedWindowDimensions.height < 0.0) {
-            safeWindowDimensions = NSMakeSize(safeWindowDimensions.width, (safeWindowDimensions.width * 0.6));
-            [[self directoryModel] setWindowDimensions:safeWindowDimensions];
-            [CFRFloppyDisk persistDirectoryProperties:[self directoryModel]];
-        }
-        
-        
-        NSPoint persistedWindowPosition = [[self directoryModel] windowPosition];
-        
-        if ((persistedWindowPosition.x == -1.0) &&
-            (persistedWindowPosition.y == -1.0))
-        {
-            // We assume the window position hasn't been
-            // previously set if windowPosition = (-1, -1).
-            // We will just do a generic offset of 30 px
-            // from the parent/calling window...
-            
-            NSRect windowFrame = event.window.frame;
-            CGFloat xPos = windowFrame.origin.x + 30.0;
-            CGFloat yPos = windowFrame.origin.y - 30.0;
-            
-            NSPoint newWindowPosition = NSMakePoint(xPos, yPos);
-            [[self directoryModel] setWindowPosition:newWindowPosition];
-        } else {
-            // Handle overflow
-            // if the last-recorded position of the window is somewhere off-screen,
-            // reposition it so that it is visible on screen
-            // handy for cases when switching between a large desktop monitor and
-            // a smaller built-in laptop screen
-            NSRect mainScreenFrame = [[NSScreen mainScreen] frame];
-            
-            // window horizontal position is out of right-side of screen
-            if (persistedWindowPosition.x > (mainScreenFrame.size.width) - 30.0) {
-                NSPoint currentWindowPosition = [[self directoryModel] windowPosition];
-                NSPoint newWindowPosition = NSMakePoint(mainScreenFrame.size.width - safeWindowDimensions.width, currentWindowPosition.y);
-                [[self directoryModel] setWindowPosition:newWindowPosition];
-            }
-            
-            // window vertical position is below bottom of screen
-            if (persistedWindowPosition.y > (mainScreenFrame.size.height) - 30.0) {
-                NSPoint currentWindowPosition = [[self directoryModel] windowPosition];
-                NSPoint newWindowPosition = NSMakePoint(currentWindowPosition.x, mainScreenFrame.size.height - safeWindowDimensions.height);
-                [[self directoryModel] setWindowPosition:newWindowPosition];
-            }
-            
-            // window horizontal position is out of left-side of screen
-            if (persistedWindowPosition.x < 0.0) {
-                NSPoint currentWindowPosition = [[self directoryModel] windowPosition];
-                NSPoint newWindowPosition = NSMakePoint(30.0, currentWindowPosition.y);
-                [[self directoryModel] setWindowPosition:newWindowPosition];
-            }
-            
-            // window vertical position is above top of screen
-            if (persistedWindowPosition.y < 0.0) {
-                NSPoint currentWindowPosition = [[self directoryModel] windowPosition];
-                NSPoint newWindowPosition = NSMakePoint(currentWindowPosition.x, 30.0);
-                [[self directoryModel] setWindowPosition:newWindowPosition];
-            }
-        }
-        
-        [self setOpenItemState];
-        
-        NSWindowController *finderWindow = [CFRWindowManager.sharedInstance createWindowForDirectory:[self directoryModel]];
-        [finderWindow showWindow:self];
-        
-        [[NSNotificationCenter defaultCenter] addObserver:event.window.windowController
-                                                 selector:@selector(closeOpenedFolder:)
-                                                     name:NSWindowWillCloseNotification
-                                                   object:finderWindow.window];
-    }
+    CCIClassicFinderWindowController *controller = (CCIClassicFinderWindowController *)event.window.windowController;
+    if (self.dragOccurred) [controller finishIconDrag:self atScreenPoint:NSEvent.mouseLocation];
+    else if (event.clickCount == 2) [controller openFolder:self.directoryModel fromIconView:self springLoaded:NO];
 }
 
 - (void)normalFolderTitleTextColor

@@ -28,6 +28,7 @@
 @interface CCIClassicFinderWindowController : NSWindowController <CCIClassicTitlebarDelegate, CCIWindowGripButtonDelegate>
 
 @property (nonatomic, strong) CFRDirectoryModel *directoryModel;
+@property (nonatomic) BOOL springLoadedWindow;
 
 - (instancetype)initForDirectory:(CFRDirectoryModel *)directoryModel;
 
@@ -37,6 +38,10 @@
 - (void)selectedNewFolder:(CCIClassicFolder *)folder;
 - (void)deselectAllItems;
 - (void)moveIconView:(NSView *)iconView toFrame:(NSRect)frame;
+- (void)updateSpringLoadedFolderForDraggedIcon:(NSView *)iconView atScreenPoint:(NSPoint)screenPoint;
+- (void)finishIconDrag:(NSView *)iconView atScreenPoint:(NSPoint)screenPoint;
+- (void)openFolder:(CFRDirectoryModel *)directory fromIconView:(NSView *)iconView springLoaded:(BOOL)springLoaded;
+- (void)refreshDirectoryListing;
 - (void)applyLabelIndex:(NSInteger)labelIndex;
 
 

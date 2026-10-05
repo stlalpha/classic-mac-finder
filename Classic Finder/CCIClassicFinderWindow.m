@@ -40,7 +40,7 @@
 
 @interface CCIClassicFinderWindow (ListViewActions)
 - (void)selectListRow:(CCIClassicListRow *)row;
-- (void)openListItem:(id<CFRFileSystemObject>)item;
+- (void)openListItem:(id<CFRFileSystemObject>)item fromView:(NSView *)view;
 - (void)sortListByStyle:(NSString *)style;
 - (void)handleListScrollWheelEvent:(NSEvent *)event;
 @end
@@ -68,13 +68,21 @@ static NSString *CCIListDisplayTitle(id<CFRFileSystemObject> item)
 
 - (void)drawSmallIcon
 {
+    NSRect iconRect = NSMakeRect(1, 1, 20, 20);
     if ([CCIApplicationStyles instance].appearanceVersion == CCIClassicAppearanceMacOS9) {
         BOOL isFolder = [self.item isKindOfClass:CFRDirectoryModel.class];
         BOOL isApplication = [self.item.objectPath.pathExtension caseInsensitiveCompare:@"app"] == NSOrderedSame;
         NSString *imageName = isFolder ? @"MacOS9Folder" : (isApplication ? @"MacOS9Application" : @"MacOS9Document");
         NSImage *image = isApplication ? [CCIClassicFileIcon macOS9StyledApplicationIconForURL:self.item.objectPath] : [NSImage imageNamed:imageName];
         if (image != nil) {
-            [image drawInRect:NSMakeRect(1, 1, 20, 20) fromRect:NSZeroRect operation:NSCompositingOperationSourceOver fraction:1.0 respectFlipped:self.isFlipped hints:nil];
+            [image drawInRect:iconRect fromRect:NSZeroRect operation:NSCompositingOperationSourceOver fraction:1.0 respectFlipped:self.isFlipped hints:nil];
+            if (self.selected) {
+                [NSGraphicsContext saveGraphicsState];
+                [NSBezierPath clipRect:iconRect];
+                [[NSColor.blackColor colorWithAlphaComponent:0.38] setFill];
+                NSRectFillUsingOperation(iconRect, NSCompositingOperationSourceAtop);
+                [NSGraphicsContext restoreGraphicsState];
+            }
             return;
         }
     }
@@ -87,12 +95,13 @@ static NSString *CCIListDisplayTitle(id<CFRFileSystemObject> item)
         NSColor *folderColor = [CCIApplicationStyles instance].appearanceVersion == CCIClassicAppearanceMacOS9
             ? [NSColor colorWithCalibratedRed:0.78 green:0.80 blue:0.92 alpha:1.0]
             : [NSColor colorWithCalibratedRed:0.82 green:0.82 blue:1.0 alpha:1.0];
+        if (self.selected) folderColor = [folderColor blendedColorWithFraction:0.38 ofColor:NSColor.blackColor];
         [folderColor setFill];
     } else {
         [shape moveToPoint:NSMakePoint(5, 1)]; [shape lineToPoint:NSMakePoint(15, 1)];
         [shape lineToPoint:NSMakePoint(19, 5)]; [shape lineToPoint:NSMakePoint(19, 15)];
         [shape lineToPoint:NSMakePoint(5, 15)]; [shape closePath];
-        [NSColor.whiteColor setFill];
+        [(self.selected ? [NSColor colorWithCalibratedWhite:0.62 alpha:1.0] : NSColor.whiteColor) setFill];
     }
     [shape fill]; [NSColor.blackColor setStroke]; [shape stroke];
 }
@@ -120,17 +129,21 @@ static NSString *CCIListDisplayTitle(id<CFRFileSystemObject> item)
     CGFloat nameWidth = self.compact ? self.bounds.size.width : floor(self.bounds.size.width * 0.45);
     NSRect nameRect = NSMakeRect(22, 0, nameWidth - 24, self.bounds.size.height);
     NSDictionary *normal = @{NSFontAttributeName: [[CCIApplicationStyles instance] classicBodyFontOfSize:12], NSForegroundColorAttributeName: NSColor.blackColor};
-    if (self.selected) {
-        [[[CCIApplicationStyles instance] darkPurpleColor] setFill];
-        NSRectFill(nameRect);
-    } else if (self.item.labelIndex > 0) {
+    if (!self.selected && self.item.labelIndex > 0) {
         [[[CCIApplicationStyles instance] labelColorForIndex:self.item.labelIndex] setFill];
         NSRectFill(nameRect);
     }
     [self drawSmallIcon];
     NSDictionary *titleAttrs = self.selected ? @{NSFontAttributeName: [[CCIApplicationStyles instance] classicBodyFontOfSize:12], NSForegroundColorAttributeName: NSColor.whiteColor} : normal;
     NSString *title = CCIListDisplayTitle(self.item);
-    [title drawInRect:NSInsetRect(nameRect, 2, 2) withAttributes:titleAttrs];
+    NSSize titleSize = [title sizeWithAttributes:titleAttrs];
+    CGFloat titleWidth = MIN(nameRect.size.width, MAX(12.0, ceil(titleSize.width) + 4.0));
+    NSRect titleRect = NSMakeRect(nameRect.origin.x, 0, titleWidth, self.bounds.size.height);
+    if (self.selected) {
+        [[[CCIApplicationStyles instance] darkPurpleColor] setFill];
+        NSRectFill(NSInsetRect(titleRect, 0, 1));
+    }
+    [title drawInRect:NSInsetRect(titleRect, 2, 2) withAttributes:titleAttrs];
     if (self.compact) return;
 
     CGFloat kindX = self.bounds.size.width * 0.47;
@@ -149,7 +162,7 @@ static NSString *CCIListDisplayTitle(id<CFRFileSystemObject> item)
 }
 
 - (void)mouseDown:(NSEvent *)event { [self.finderWindow selectListRow:self]; }
-- (void)mouseUp:(NSEvent *)event { if (event.clickCount > 1) [self.finderWindow openListItem:self.item]; }
+- (void)mouseUp:(NSEvent *)event { if (event.clickCount > 1) [self.finderWindow openListItem:self.item fromView:self]; }
 - (void)scrollWheel:(NSEvent *)event
 {
     if (self.finderWindow != nil) [self.finderWindow handleListScrollWheelEvent:event];
@@ -185,6 +198,7 @@ static NSString *CCIListDisplayTitle(id<CFRFileSystemObject> item)
 @interface CCIClassicFinderWindow () {
     BOOL windowIsActive;
 }
+@property (nonatomic) BOOL isFinishingZoomClose;
 
 @property (nonatomic, strong) CCITitleBar *titlebar;
 @property (nonatomic, strong) CCIClassicFinderDetailBar *detailBar;
@@ -196,6 +210,60 @@ static NSString *CCIListDisplayTitle(id<CFRFileSystemObject> item)
 @end
 
 @implementation CCIClassicFinderWindow
+
+static CCIClassicFolder *CCIFolderViewForDirectory(NSView *view, NSURL *directoryURL)
+{
+    if ([view isKindOfClass:CCIClassicFolder.class]) {
+        CCIClassicFolder *folder = (CCIClassicFolder *)view;
+        if ([folder.directoryModel.objectPath isEqual:directoryURL]) return folder;
+    }
+    for (NSView *child in view.subviews) {
+        CCIClassicFolder *match = CCIFolderViewForDirectory(child, directoryURL);
+        if (match != nil) return match;
+    }
+    return nil;
+}
+
+- (void)close
+{
+    if (self.isFinishingZoomClose || !CFRWindowManager.sharedInstance.zoomRectAnimationsEnabled) {
+        [super close];
+        return;
+    }
+
+    CCIClassicFinderWindowController *controller = (CCIClassicFinderWindowController *)self.windowController;
+    NSURL *parentURL = controller.directoryModel.objectPath.URLByDeletingLastPathComponent;
+    NSRect targetRect = NSZeroRect;
+    for (NSWindow *candidate in NSApp.windows) {
+        if (candidate == self || ![candidate isKindOfClass:CCIClassicFinderWindow.class]) continue;
+        CCIClassicFinderWindowController *parentController = (CCIClassicFinderWindowController *)candidate.windowController;
+        if (![parentController.directoryModel.objectPath isEqual:parentURL]) continue;
+        CCIClassicFolder *folder = CCIFolderViewForDirectory(candidate.contentView, controller.directoryModel.objectPath);
+        if (folder != nil) {
+            NSRect iconRect = [folder convertRect:NSMakeRect(14.5, 2.0, 31.0, 25.0) toView:nil];
+            targetRect = [candidate convertRectToScreen:iconRect];
+            break;
+        }
+    }
+    if (NSIsEmptyRect(targetRect)) {
+        [super close];
+        return;
+    }
+
+    self.isFinishingZoomClose = YES;
+    [self setFrame:targetRect display:YES animate:YES];
+    [super close];
+}
+
+- (void)animateOpeningFromScreenRect:(NSRect)screenRect
+{
+    if (!CFRWindowManager.sharedInstance.zoomRectAnimationsEnabled || NSIsEmptyRect(screenRect)) return;
+    NSRect finalFrame = self.frame;
+    [self orderOut:nil];
+    [self setFrame:screenRect display:NO];
+    [self orderFront:nil];
+    [self setFrame:finalFrame display:YES animate:YES];
+}
 
 - (instancetype)initWithContentRect:(NSRect)contentRect
                           styleMask:(NSWindowStyleMask)style
@@ -516,7 +584,7 @@ static NSString *CCIListDisplayTitle(id<CFRFileSystemObject> item)
     [self.scrollView scrollWheel:event];
 }
 
-- (void)openListItem:(id<CFRFileSystemObject>)item
+- (void)openListItem:(id<CFRFileSystemObject>)item fromView:(NSView *)view
 {
     if ([item isKindOfClass:CFRFileModel.class]) {
         [CFRFileSystemOperations openFileAtURL:item.objectPath];
@@ -524,17 +592,7 @@ static NSString *CCIListDisplayTitle(id<CFRFileSystemObject> item)
     }
 
     CFRDirectoryModel *directory = (CFRDirectoryModel *)item;
-    [CFRFloppyDisk restoreDirectoryProperties:directory];
-    NSSize dimensions = directory.windowDimensions;
-    if (dimensions.width <= 0.0) dimensions.width = 500.0;
-    if (dimensions.height <= 0.0) dimensions.height = 300.0;
-    directory.windowDimensions = dimensions;
-    if (directory.windowPosition.x < 0.0 || directory.windowPosition.y < 0.0) {
-        directory.windowPosition = NSMakePoint(self.frame.origin.x + 30.0, self.frame.origin.y - 30.0);
-    }
-    [CFRFloppyDisk persistDirectoryProperties:directory];
-    CCIClassicFinderWindowController *controller = [[CFRWindowManager sharedInstance] createWindowForDirectory:directory];
-    [controller showWindow:self];
+    [(CCIClassicFinderWindowController *)self.windowController openFolder:directory fromIconView:view springLoaded:NO];
 }
 
 - (void)moveIconView:(NSView *)iconView toFrame:(NSRect)frame

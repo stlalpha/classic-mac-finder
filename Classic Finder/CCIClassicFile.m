@@ -42,6 +42,7 @@ static NSString *CCITruncatedFileIconTitle(NSString *title, NSFont *font, CGFloa
 @property BOOL fileSelected;
 @property NSPoint dragStartLocation;
 @property NSRect dragStartFrame;
+@property BOOL dragOccurred;
 
 @end
 
@@ -121,20 +122,28 @@ static NSString *CCITruncatedFileIconTitle(NSString *title, NSFont *font, CGFloa
     CCIClassicFinderWindowController *wc = event.window.windowController;
     self.dragStartLocation = [self.superview convertPoint:event.locationInWindow fromView:nil];
     self.dragStartFrame = self.frame;
+    self.dragOccurred = NO;
     [wc selectedNewFile:self];
 }
 
 - (void)mouseDragged:(NSEvent *)event
 {
+    self.dragOccurred = YES;
     NSPoint point = [self.superview convertPoint:event.locationInWindow fromView:nil];
     NSRect frame = self.dragStartFrame;
     frame.origin.x += point.x - self.dragStartLocation.x;
     frame.origin.y += point.y - self.dragStartLocation.y;
     [(CCIClassicFinderWindowController *)event.window.windowController moveIconView:self toFrame:frame];
+    [(CCIClassicFinderWindowController *)event.window.windowController updateSpringLoadedFolderForDraggedIcon:self atScreenPoint:NSEvent.mouseLocation];
 }
 
 - (void)mouseUp:(NSEvent *)event
 {
+    CCIClassicFinderWindowController *controller = (CCIClassicFinderWindowController *)event.window.windowController;
+    if (self.dragOccurred) {
+        [controller finishIconDrag:self atScreenPoint:NSEvent.mouseLocation];
+        return;
+    }
     if (event.clickCount == 2)
     {
         [CFRFileSystemOperations openFileAtURL:self.representedFile];
