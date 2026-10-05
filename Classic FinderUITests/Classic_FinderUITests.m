@@ -42,4 +42,22 @@
     XCTAssertTrue([itemCount waitForExistenceWithTimeout:10.0]);
 }
 
+- (void)testViewMenuSwitchesBetweenIconAndListLayouts
+{
+    [self.application launch];
+
+    XCUIElement *viewMenu = self.application.menuBars.menuItems[@"View"];
+    XCTAssertTrue([viewMenu waitForExistenceWithTimeout:5.0]);
+    [viewMenu click];
+    [self.application.menuItems[@"by Name"] click];
+
+    NSPredicate *folderRow = [NSPredicate predicateWithFormat:@"label CONTAINS %@ AND label CONTAINS %@", @"Folder", @"Applications"];
+    XCUIElement *folderRowElement = [self.application.staticTexts matchingPredicate:folderRow].firstMatch;
+    XCTAssertTrue([folderRowElement waitForExistenceWithTimeout:5.0]);
+
+    [viewMenu click];
+    [self.application.menuItems[@"by Icon"] click];
+    XCTAssertTrue(self.application.staticTexts.firstMatch.exists);
+}
+
 @end

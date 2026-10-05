@@ -178,4 +178,18 @@
     self.window = finderWindow.window;
 }
 
+- (void)applyViewStyle:(NSString *)style
+{
+    CCIClassicFinderWindow *window = (CCIClassicFinderWindow *)NSApp.keyWindow;
+    if ([window isKindOfClass:CCIClassicFinderWindow.class]) [window setDisplayStyle:style];
+}
+
+- (void)showBySmallIcon:(id)sender { [self applyViewStyle:@"Small Icon"]; }
+- (void)showByIcon:(id)sender { [self applyViewStyle:@"Icon"]; }
+- (void)showByName:(id)sender { [self applyViewStyle:@"Name"]; }
+- (void)showBySize:(id)sender { [self applyViewStyle:@"Size"]; }
+- (void)showByKind:(id)sender { [self applyViewStyle:@"Kind"]; }
+- (void)showByLabel:(id)sender { [self applyViewStyle:@"Label"]; }
+- (void)showByDate:(id)sender { [self applyViewStyle:@"Date"]; }
+
 @end

@@ -28,6 +28,8 @@
 @property (nonatomic, copy) NSString *fileTitle;
 @property (nonatomic, strong) CCIClassicFileIcon *iconImage;
 @property BOOL fileSelected;
+@property NSPoint dragStartLocation;
+@property NSRect dragStartFrame;
 
 @end
 
@@ -46,7 +48,7 @@
         
         [self addSubview:self.iconImage];
         
-        NSRect fileLabelFrame = NSMakeRect(2.0, 35.0, 54.0, 24.0);
+        NSRect fileLabelFrame = NSMakeRect(6.5, 35.0, 55.0, 24.0);
         self.fileLabel = [[NSTextField alloc] initWithFrame:fileLabelFrame];
         self.fileLabel.alignment = NSTextAlignmentCenter;
         self.fileLabel.font = [[CCIApplicationStyles instance] classicBodyFontOfSize:10.0];
@@ -79,7 +81,18 @@
 - (void)mouseDown:(NSEvent *)event
 {
     CCIClassicFinderWindowController *wc = event.window.windowController;
+    self.dragStartLocation = [self.superview convertPoint:event.locationInWindow fromView:nil];
+    self.dragStartFrame = self.frame;
     [wc selectedNewFile:self];
+}
+
+- (void)mouseDragged:(NSEvent *)event
+{
+    NSPoint point = [self.superview convertPoint:event.locationInWindow fromView:nil];
+    NSRect frame = self.dragStartFrame;
+    frame.origin.x += point.x - self.dragStartLocation.x;
+    frame.origin.y += point.y - self.dragStartLocation.y;
+    [(CCIClassicFinderWindowController *)event.window.windowController moveIconView:self toFrame:frame];
 }
 
 - (void)mouseUp:(NSEvent *)event

@@ -158,24 +158,31 @@
                         <items>
                             <menuItem title="by Small Icon" id="14m-g1-3m2">
                                 <modifierMask key="keyEquivalentModifierMask"/>
+                                <connections><action selector="showBySmallIcon:" target="Voe-Tx-rLC" id="vsmallact"/></connections>
                             </menuItem>
                             <menuItem title="by Icon" id="mBu-PO-GPu">
                                 <modifierMask key="keyEquivalentModifierMask"/>
+                                <connections><action selector="showByIcon:" target="Voe-Tx-rLC" id="viconact"/></connections>
                             </menuItem>
                             <menuItem title="by Name" id="UAM-Sp-53s">
                                 <modifierMask key="keyEquivalentModifierMask"/>
+                                <connections><action selector="showByName:" target="Voe-Tx-rLC" id="vnameact"/></connections>
                             </menuItem>
                             <menuItem title="by Size" id="2x0-D2-60d">
                                 <modifierMask key="keyEquivalentModifierMask"/>
+                                <connections><action selector="showBySize:" target="Voe-Tx-rLC" id="vsizeact"/></connections>
                             </menuItem>
                             <menuItem title="by Kind" id="tdb-7k-5d3">
                                 <modifierMask key="keyEquivalentModifierMask"/>
+                                <connections><action selector="showByKind:" target="Voe-Tx-rLC" id="vkindact"/></connections>
                             </menuItem>
                             <menuItem title="by Label" id="c2K-8c-iYP">
                                 <modifierMask key="keyEquivalentModifierMask"/>
+                                <connections><action selector="showByLabel:" target="Voe-Tx-rLC" id="vlabelact"/></connections>
                             </menuItem>
                             <menuItem title="by Date" id="Lq3-K5-f2g">
                                 <modifierMask key="keyEquivalentModifierMask"/>
+                                <connections><action selector="showByDate:" target="Voe-Tx-rLC" id="vdateact"/></connections>
                             </menuItem>
                         </items>
                     </menu>

@@ -158,6 +158,11 @@
     [self.selectedFiles removeAllObjects];
 }
 
+- (void)moveIconView:(NSView *)iconView toFrame:(NSRect)frame
+{
+    [(CCIClassicFinderWindow *)self.window moveIconView:iconView toFrame:frame];
+}
+
 #pragma mark - TITLEBAR DELEGATE METHODS
 
 - (void)titlebarDidFinishDetectingWindowPositionChange:(CCITitleBar *)sender

@@ -22,6 +22,7 @@
 
 @interface CCIClassicFile : NSControl <CCIFinderIconProtocol>
 
+@property (nonatomic, strong) id fileModel;
 @property (nonatomic, copy) NSURL *representedFile;
 @property (nonatomic, strong) NSTextField *fileLabel;
 

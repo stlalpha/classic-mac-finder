@@ -37,5 +37,7 @@
 - (void)setWindowInactive;
 - (void)liveResizeToFrame:(NSRect)frameRect;
 - (void)finishedResizeToFrame:(NSRect)frameRect;
+- (void)setDisplayStyle:(NSString *)style;
+- (void)moveIconView:(NSView *)iconView toFrame:(NSRect)frame;
 
 @end

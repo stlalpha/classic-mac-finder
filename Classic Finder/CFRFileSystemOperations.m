@@ -21,6 +21,7 @@
 #import "CFRFileModel.h"
 #import "CFRDirectoryModel.h"
 #import "CFRAppModel.h"
+#import "CFRFloppyDisk.h"
 #import <AppKit/AppKit.h>
 
 @implementation CFRFileSystemOperations
@@ -61,6 +62,7 @@
             directoryModel.lastModified = lastModifiedDate ?: [NSDate date];
             directoryModel.objectPath = directoryItem;
             directoryModel.fileSystemNumber = (unsigned long)fileSystemNumber;
+            [CFRFloppyDisk restoreDirectoryProperties:directoryModel];
             [fileList addObject:directoryModel];
         } else {
             CFRFileModel *fileModel = [[CFRFileModel alloc] init];
@@ -69,6 +71,7 @@
             fileModel.lastModified = lastModifiedDate ?: [NSDate date];
             fileModel.objectPath = directoryItem;
             fileModel.fileSystemNumber = (unsigned long)fileSystemNumber;
+            [CFRFloppyDisk restoreFileProperties:fileModel];
             [fileList addObject:fileModel];
         }
     }

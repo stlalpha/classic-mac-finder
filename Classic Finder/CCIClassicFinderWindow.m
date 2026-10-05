@@ -31,6 +31,8 @@
 #import "CFRAppModel.h"
 #import "CCIClassicFinderWindowController.h"
 #import "CCIResizeOverlayOutline.h"
+#import "CCIApplicationStyles.h"
+#import "CFRFloppyDisk.h"
 
 @interface CCIClassicFinderWindow () {
     BOOL windowIsActive;
@@ -40,6 +42,7 @@
 @property (nonatomic, strong) CCIClassicFinderDetailBar *detailBar;
 @property (nonatomic, strong) CCIScrollView *scrollView;
 @property (nonatomic, strong) CCIResizeOverlayOutline *resizeOverlay;
+@property (nonatomic, copy) NSString *displayStyle;
 
 @end
 
@@ -120,6 +123,10 @@
                 }
                 
                 CGFloat iconTopPosition = 15.0 + (iconRow * 60.0);
+                if (directoryItem.iconPosition.x >= 0.0 && directoryItem.iconPosition.y >= 0.0) {
+                    iconLeftPosition = directoryItem.iconPosition.x;
+                    iconTopPosition = directoryItem.iconPosition.y;
+                }
                 
                 CGRect folderFrame = NSMakeRect(iconLeftPosition,
                                                 iconTopPosition,
@@ -143,6 +150,10 @@
                 }
                 
                 CGFloat iconTopPosition = 15.0 + (iconRow * 60.0);
+                if (fileItem.iconPosition.x >= 0.0 && fileItem.iconPosition.y >= 0.0) {
+                    iconLeftPosition = fileItem.iconPosition.x;
+                    iconTopPosition = fileItem.iconPosition.y;
+                }
                 
                 CGRect folderFrame = NSMakeRect(iconLeftPosition,
                                                 iconTopPosition,
@@ -244,6 +255,77 @@
                                         roundedFrameRect.size.width - 3.0,
                                         roundedFrameRect.size.height - 44.0 - 2.0);
     [[self scrollView] setFrame:scrollViewFrame];
+}
+
+- (void)setDisplayStyle:(NSString *)style
+{
+    _displayStyle = [style copy];
+    CCIScrollContentView *content = self.scrollView.contentView;
+    [content.subviews.copy enumerateObjectsUsingBlock:^(NSView *view, NSUInteger idx, BOOL *stop) { [view removeFromSuperview]; }];
+
+    if (![style isEqualToString:@"Icon"]) {
+        NSArray *items = [self.fileList sortedArrayUsingComparator:^NSComparisonResult(id<CFRFileSystemObject> a, id<CFRFileSystemObject> b) {
+            if ([style isEqualToString:@"Date"]) return [b.lastModified compare:a.lastModified];
+            if ([style isEqualToString:@"Size"]) {
+                unsigned long long aSize = [[[NSFileManager defaultManager] attributesOfItemAtPath:a.objectPath.path error:nil][NSFileSize] unsignedLongLongValue];
+                unsigned long long bSize = [[[NSFileManager defaultManager] attributesOfItemAtPath:b.objectPath.path error:nil][NSFileSize] unsignedLongLongValue];
+                return (aSize > bSize) ? NSOrderedAscending : ((aSize < bSize) ? NSOrderedDescending : NSOrderedSame);
+            }
+            if ([style isEqualToString:@"Kind"]) {
+                NSString *aKind = [a isKindOfClass:CFRDirectoryModel.class] ? @"folder" : a.objectPath.pathExtension.lowercaseString;
+                NSString *bKind = [b isKindOfClass:CFRDirectoryModel.class] ? @"folder" : b.objectPath.pathExtension.lowercaseString;
+                NSComparisonResult kindOrder = [aKind localizedStandardCompare:bKind];
+                if (kindOrder != NSOrderedSame) return kindOrder;
+            }
+            return [a.title localizedStandardCompare:b.title];
+        }];
+        CGFloat rowHeight = 22.0;
+        [items enumerateObjectsUsingBlock:^(id<CFRFileSystemObject> item, NSUInteger idx, BOOL *stop) {
+            NSTextField *row = [[NSTextField alloc] initWithFrame:NSMakeRect(8.0, 7.0 + idx * rowHeight, content.bounds.size.width - 16.0, rowHeight)];
+            NSString *kind = [item isKindOfClass:CFRDirectoryModel.class] ? @"Folder" : (item.objectPath.pathExtension.length ? item.objectPath.pathExtension.uppercaseString : @"Document");
+            NSString *date = item.lastModified ? [NSDateFormatter localizedStringFromDate:item.lastModified dateStyle:NSDateFormatterShortStyle timeStyle:NSDateFormatterShortStyle] : @"";
+            unsigned long long bytes = [[[NSFileManager defaultManager] attributesOfItemAtPath:item.objectPath.path error:nil][NSFileSize] unsignedLongLongValue];
+            NSString *sizeText = [item isKindOfClass:CFRDirectoryModel.class] ? @"—" : [NSByteCountFormatter stringFromByteCount:(long long)bytes countStyle:NSByteCountFormatterCountStyleFile];
+            row.stringValue = [NSString stringWithFormat:@"%@     %@     %@     %@", item.title ?: @"", kind, sizeText, date];
+            row.font = [[CCIApplicationStyles instance] classicBodyFontOfSize:10.0];
+            row.textColor = NSColor.blackColor;
+            row.bordered = NO; row.editable = NO; row.drawsBackground = NO;
+            row.lineBreakMode = NSLineBreakByTruncatingTail;
+            [content addSubview:row];
+        }];
+        NSRect size = content.frame;
+        size.size.height = MAX(self.scrollView.frame.size.height, items.count * rowHeight + 14.0);
+        [self.scrollView resizeContentView:size];
+        return;
+    }
+
+    CGFloat iconSize = 60.0;
+    NSArray *items = self.fileList;
+    NSUInteger row = 0, col = 0;
+    for (id<CFRFileSystemObject> item in items) {
+        CGFloat x = 10.0 + col * iconSize;
+        if (x > self.frame.size.width - 55.0) { row++; col = 0; x = 10.0; }
+        NSPoint savedPosition = item.iconPosition;
+        NSRect frame = NSMakeRect(savedPosition.x >= 0.0 && savedPosition.y >= 0.0 ? savedPosition.x : x,
+                                  savedPosition.x >= 0.0 && savedPosition.y >= 0.0 ? savedPosition.y : 15.0 + row * iconSize,
+                                  55.0, 60.0);
+        if ([item isKindOfClass:CFRDirectoryModel.class]) {
+            CCIClassicFolder *icon = [[CCIClassicFolder alloc] initWithFrame:frame]; icon.directoryModel = (CFRDirectoryModel *)item; [icon setFolderTitleText:item.title]; [content addSubview:icon];
+        } else {
+            CCIClassicFile *icon = [[CCIClassicFile alloc] initWithFrame:frame]; icon.fileModel = item; icon.representedFile = item.objectPath; [icon setFileTitleText:item.title]; [content addSubview:icon];
+        }
+        col++;
+    }
+    NSRect size = content.frame; size.size.height = MAX(self.scrollView.frame.size.height, (row + 1) * iconSize + 15.0); [self.scrollView resizeContentView:size];
+}
+
+- (void)moveIconView:(NSView *)iconView toFrame:(NSRect)frame
+{
+    iconView.frame = frame;
+    id<CFRFileSystemObject> model = [iconView isKindOfClass:CCIClassicFolder.class] ? ((CCIClassicFolder *)iconView).directoryModel : ((CCIClassicFile *)iconView).fileModel;
+    model.iconPosition = frame.origin;
+    if ([model isKindOfClass:CFRDirectoryModel.class]) [CFRFloppyDisk persistDirectoryProperties:(CFRDirectoryModel *)model];
+    else if ([model isKindOfClass:CFRFileModel.class]) [CFRFloppyDisk persistFileProperties:(CFRFileModel *)model];
 }
 
 - (void)setWindowActive

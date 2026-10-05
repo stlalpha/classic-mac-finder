@@ -36,6 +36,7 @@
 - (void)selectedNewFile:(CCIClassicFile *)file;
 - (void)selectedNewFolder:(CCIClassicFolder *)folder;
 - (void)deselectAllItems;
+- (void)moveIconView:(NSView *)iconView toFrame:(NSRect)frame;
 
 
 @end

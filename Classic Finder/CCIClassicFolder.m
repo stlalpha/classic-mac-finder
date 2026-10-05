@@ -34,6 +34,8 @@
 
 @property BOOL folderSelected;
 @property BOOL folderOpened;
+@property NSPoint dragStartLocation;
+@property NSRect dragStartFrame;
 
 @end
 
@@ -52,7 +54,7 @@
         
         [self addSubview:self.iconImage];
         
-        NSRect folderLabelFrame = NSMakeRect(2.0, 35.0, 54.0, 24.0);
+        NSRect folderLabelFrame = NSMakeRect(2.5, 35.0, 55.0, 24.0);
         self.folderLabel = [[NSTextField alloc] initWithFrame:folderLabelFrame];
         self.folderLabel.alignment = NSTextAlignmentCenter;
         self.folderLabel.font = [[CCIApplicationStyles instance] classicBodyFontOfSize:10.0];
@@ -86,7 +88,18 @@
 - (void)mouseDown:(NSEvent *)event
 {
     CCIClassicFinderWindowController *wc = event.window.windowController;
+    self.dragStartLocation = [self.superview convertPoint:event.locationInWindow fromView:nil];
+    self.dragStartFrame = self.frame;
     [wc selectedNewFolder:self];
+}
+
+- (void)mouseDragged:(NSEvent *)event
+{
+    NSPoint point = [self.superview convertPoint:event.locationInWindow fromView:nil];
+    NSRect frame = self.dragStartFrame;
+    frame.origin.x += point.x - self.dragStartLocation.x;
+    frame.origin.y += point.y - self.dragStartLocation.y;
+    [(CCIClassicFinderWindowController *)event.window.windowController moveIconView:self toFrame:frame];
 }
 
 - (void)mouseUp:(NSEvent *)event
