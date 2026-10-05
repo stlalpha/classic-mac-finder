@@ -21,6 +21,13 @@
 
 @implementation CCIScrollContentContainer
 
+- (instancetype)initWithFrame:(NSRect)frameRect
+{
+    self = [super initWithFrame:frameRect];
+    if (self) self.clipsToBounds = YES;
+    return self;
+}
+
 - (BOOL)isFlipped
 {
     return YES;
