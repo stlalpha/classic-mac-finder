@@ -53,7 +53,7 @@
         self.fileLabel.bordered = NO;
         self.fileLabel.selectable = NO;
         self.fileLabel.lineBreakMode = NSLineBreakByCharWrapping;
-        self.fileLabel.drawsBackground = YES;
+        self.fileLabel.drawsBackground = NO;
 
         [self normalFileTitleTextColor];
         
@@ -90,14 +90,23 @@
 
 - (void)normalFileTitleTextColor
 {
-    self.fileLabel.backgroundColor = [[CCIApplicationStyles instance] whiteColor];
-    self.fileLabel.textColor = [[CCIApplicationStyles instance] blackColor];
+    NSDictionary *attributes = @{
+        NSForegroundColorAttributeName: [[CCIApplicationStyles instance] blackColor],
+        NSFontAttributeName: self.fileLabel.font
+    };
+    self.fileLabel.attributedStringValue = [[NSAttributedString alloc] initWithString:self.fileLabel.stringValue
+                                                                            attributes:attributes];
 }
 
 - (void)reverseFileTitleTextColor
 {
-    self.fileLabel.backgroundColor = [[CCIApplicationStyles instance] blackColor];
-    self.fileLabel.textColor = [[CCIApplicationStyles instance] whiteColor];
+    NSDictionary *attributes = @{
+        NSForegroundColorAttributeName: [[CCIApplicationStyles instance] whiteColor],
+        NSBackgroundColorAttributeName: [[CCIApplicationStyles instance] blackColor],
+        NSFontAttributeName: self.fileLabel.font
+    };
+    self.fileLabel.attributedStringValue = [[NSAttributedString alloc] initWithString:self.fileLabel.stringValue
+                                                                            attributes:attributes];
 }
 
 - (void)selectItem

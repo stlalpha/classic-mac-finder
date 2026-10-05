@@ -59,7 +59,7 @@
         self.folderLabel.bordered = NO;
         self.folderLabel.selectable = NO;
         self.folderLabel.lineBreakMode = NSLineBreakByCharWrapping;
-        self.folderLabel.drawsBackground = YES;
+        self.folderLabel.drawsBackground = NO;
         self.folderLabel.maximumNumberOfLines = 5;
         self.folderLabel.usesSingleLineMode = NO;
 
@@ -178,14 +178,23 @@
 
 - (void)normalFolderTitleTextColor
 {
-    self.folderLabel.backgroundColor = [[CCIApplicationStyles instance] whiteColor];
-    self.folderLabel.textColor = [[CCIApplicationStyles instance] blackColor];
+    NSDictionary *attributes = @{
+        NSForegroundColorAttributeName: [[CCIApplicationStyles instance] blackColor],
+        NSFontAttributeName: self.folderLabel.font
+    };
+    self.folderLabel.attributedStringValue = [[NSAttributedString alloc] initWithString:self.folderLabel.stringValue
+                                                                              attributes:attributes];
 }
 
 - (void)reverseFolderTitleTextColor
 {
-    self.folderLabel.backgroundColor = [[CCIApplicationStyles instance] blackColor];
-    self.folderLabel.textColor = [[CCIApplicationStyles instance] whiteColor];
+    NSDictionary *attributes = @{
+        NSForegroundColorAttributeName: [[CCIApplicationStyles instance] whiteColor],
+        NSBackgroundColorAttributeName: [[CCIApplicationStyles instance] blackColor],
+        NSFontAttributeName: self.folderLabel.font
+    };
+    self.folderLabel.attributedStringValue = [[NSAttributedString alloc] initWithString:self.folderLabel.stringValue
+                                                                              attributes:attributes];
 }
 
 - (void)selectItem
