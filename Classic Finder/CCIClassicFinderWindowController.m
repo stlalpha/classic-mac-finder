@@ -29,6 +29,7 @@
 #import "CFRFileModel.h"
 #import "CFRFloppyDisk.h"
 #import "CCIClassicContentView.h"
+#import <errno.h>
 
 @interface CCIClassicFinderWindowController ()
 
@@ -81,7 +82,20 @@
         [self setWindow:finderWindow];
         
         if (listingError != nil) {
-            [[NSAlert alertWithError:listingError] beginSheetModalForWindow:finderWindow completionHandler:nil];
+            BOOL permissionDenied = ([listingError.domain isEqualToString:NSCocoaErrorDomain] && listingError.code == NSFileReadNoPermissionError) ||
+                ([listingError.domain isEqualToString:NSPOSIXErrorDomain] && (listingError.code == EACCES || listingError.code == EPERM));
+            NSAlert *alert = [[NSAlert alloc] init];
+            alert.alertStyle = NSAlertStyleWarning;
+            alert.messageText = permissionDenied ? @"Permission Needed to Open This Folder" : @"Couldn’t Open This Folder";
+            if (permissionDenied) {
+                NSString *folderName = directoryModel.title ?: directoryModel.objectPath.lastPathComponent;
+                alert.informativeText = [NSString stringWithFormat:
+                    @"Classic Finder couldn’t read “%@”. macOS protects some folders until you grant access. Allow Classic Finder in the macOS permission prompt, or open System Settings > Privacy & Security > Files & Folders and enable access.\n\n%@",
+                    folderName, listingError.localizedDescription];
+            } else {
+                alert.informativeText = listingError.localizedDescription;
+            }
+            [alert beginSheetModalForWindow:finderWindow completionHandler:nil];
         }
         
         NSNotificationCenter *dc = [NSNotificationCenter defaultCenter];
