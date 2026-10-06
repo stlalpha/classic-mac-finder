@@ -90,7 +90,7 @@
             if (permissionDenied) {
                 NSString *folderName = directoryModel.title ?: directoryModel.objectPath.lastPathComponent;
                 alert.informativeText = [NSString stringWithFormat:
-                    @"Classic Finder couldn’t read “%@”. macOS protects some folders until you grant access. Allow Classic Finder in the macOS permission prompt, or open System Settings > Privacy & Security > Files & Folders and enable access.\n\n%@",
+                    @"Classic Finder couldn’t read “%@”. Allow access in the macOS permission prompt, or open System Settings > Privacy & Security and enable Classic Finder for this folder under Files & Folders or Photos.\n\n%@",
                     folderName, listingError.localizedDescription];
             } else {
                 alert.informativeText = listingError.localizedDescription;

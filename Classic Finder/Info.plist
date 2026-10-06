@@ -32,6 +32,12 @@
 	<string>Classic Finder needs access to show the contents of Documents folders you open.</string>
 	<key>NSDownloadsFolderUsageDescription</key>
 	<string>Classic Finder needs access to show the contents of Downloads folders you open.</string>
+	<key>NSPicturesFolderUsageDescription</key>
+	<string>Classic Finder needs access to show the contents of Pictures folders you open.</string>
+	<key>NSMusicFolderUsageDescription</key>
+	<string>Classic Finder needs access to show the contents of Music folders you open.</string>
+	<key>NSMoviesFolderUsageDescription</key>
+	<string>Classic Finder needs access to show the contents of Movies folders you open.</string>
 	<key>NSNetworkVolumesUsageDescription</key>
 	<string>Classic Finder needs access to show the contents of network volumes you open.</string>
 	<key>NSRemovableVolumesUsageDescription</key>
